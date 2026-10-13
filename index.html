@@ -1,0 +1,6280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>派个单</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  }
+
+  .phone-container {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    position: relative;
+    overflow: hidden;
+    background: #0f0c29;
+  }
+
+  /* ========== 闪屏页 ========== */
+  .splash-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1a2980 0%, #26d0ce 50%, #8e2de2 100%);
+    opacity: 1;
+    transition: opacity 0.4s ease-out;
+  }
+
+  .splash-screen.hide {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .splash-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .splash-bg::before,
+  .splash-bg::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.6;
+  }
+
+  .splash-bg::before {
+    width: 300px;
+    height: 300px;
+    background: #4facfe;
+    top: -100px;
+    right: -80px;
+    animation: float1 4s ease-in-out infinite;
+  }
+
+  .splash-bg::after {
+    width: 250px;
+    height: 250px;
+    background: #8e2de2;
+    bottom: -80px;
+    left: -60px;
+    animation: float2 5s ease-in-out infinite;
+  }
+
+  @keyframes float1 {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-30px, 20px); }
+  }
+
+  @keyframes float2 {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(20px, -30px); }
+  }
+
+  .splash-logo {
+    position: relative;
+    z-index: 1;
+    width: 100px;
+    height: 100px;
+    margin-bottom: 28px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    animation: logoIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  @keyframes logoIn {
+    from {
+      transform: scale(0.5);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .splash-logo svg {
+    width: 56px;
+    height: 56px;
+  }
+
+  .splash-title {
+    position: relative;
+    z-index: 1;
+    font-size: 42px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 6px;
+    margin-bottom: 12px;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    animation: titleIn 0.6s ease-out 0.15s both;
+  }
+
+  @keyframes titleIn {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .splash-subtitle {
+    position: relative;
+    z-index: 1;
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.85);
+    letter-spacing: 1px;
+    font-weight: 300;
+    animation: titleIn 0.6s ease-out 0.3s both;
+  }
+
+  .splash-desc {
+    position: relative;
+    z-index: 1;
+    margin-top: 6px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    letter-spacing: 0.5px;
+    font-weight: 300;
+    animation: titleIn 0.6s ease-out 0.4s both;
+  }
+
+  .splash-tag {
+    position: relative;
+    z-index: 1;
+    margin-top: 8px;
+    padding: 4px 14px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 20px;
+    font-size: 12px;
+    color: #fff;
+    letter-spacing: 1px;
+    animation: titleIn 0.6s ease-out 0.45s both;
+  }
+
+  /* ========== 主页面 ========== */
+  .main-page {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #f5f6fa;
+    opacity: 0;
+    transition: opacity 0.4s ease-in;
+  }
+
+  .main-page.show {
+    opacity: 1;
+  }
+
+  /* 状态栏占位 */
+  .status-bar {
+    height: env(safe-area-inset-top, 0px);
+    flex-shrink: 0;
+    background: transparent;
+  }
+
+  /* 内容区域 */
+  .content-area {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .page-content {
+    display: none;
+    min-height: 100%;
+  }
+
+  .page-content.active {
+    display: block;
+    animation: pageFadeIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes pageFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* 空白页占位 */
+  /* ========== 首页 ========== */
+  #page-home {
+    padding: 0 0 20px;
+  }
+
+  /* 顶部Banner */
+  .home-banner {
+    margin: 0 16px 12px;
+    height: 130px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #1a2980 0%, #667eea 50%, #8e2de2 100%);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    padding: 0 22px;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.25);
+  }
+
+  .banner-content {
+    position: relative;
+    z-index: 2;
+    color: #fff;
+  }
+
+  .banner-title {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  .banner-sub {
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0.95;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+
+  .banner-tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 4px 10px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 100px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .banner-decoration {
+    position: absolute;
+    right: 10px;
+    top: 0;
+    bottom: 0;
+    width: 120px;
+  }
+
+  .banner-circle {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.15;
+  }
+
+  .banner-circle.c1 {
+    width: 100px;
+    height: 100px;
+    background: #fff;
+    top: -20px;
+    right: -10px;
+  }
+
+  .banner-circle.c2 {
+    width: 60px;
+    height: 60px;
+    background: #fff;
+    bottom: 10px;
+    right: 40px;
+  }
+
+  .banner-coin {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ffd700, #ff9500);
+    color: #fff;
+    font-size: 32px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(255, 149, 0, 0.4);
+    z-index: 2;
+  }
+
+  /* 滚动字幕 */
+  .scroll-notice {
+    margin: 0 16px 14px;
+    height: 36px;
+    background: #1a1a2e;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .notice-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffd700;
+    flex-shrink: 0;
+  }
+
+  .notice-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .notice-scroll {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+  }
+
+  .notice-text {
+    white-space: nowrap;
+    font-size: 12px;
+    color: #f0e68c;
+    line-height: 36px;
+    padding-right: 100%;
+    animation: noticeScroll 20s linear infinite;
+  }
+
+  @keyframes noticeScroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  /* 两个大按钮 */
+  .home-btns {
+    display: flex;
+    gap: 12px;
+    padding: 0 16px;
+    margin-bottom: 16px;
+  }
+
+  .home-btn {
+    flex: 1;
+    height: 72px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 12px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease;
+  }
+
+  .home-btn:active {
+    transform: scale(0.96);
+  }
+
+  .home-btn.accept {
+    background: linear-gradient(135deg, #00b09b 0%, #22c1c3 100%);
+    box-shadow: 0 6px 16px rgba(0, 176, 155, 0.25);
+  }
+
+  .home-btn.publish {
+    background: linear-gradient(135deg, #667eea 0%, #8e2de2 100%);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.25);
+  }
+
+  .home-btn-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .home-btn-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .home-btn-text {
+    color: #fff;
+  }
+
+  .home-btn-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+
+  .home-btn-sub {
+    font-size: 11px;
+    opacity: 0.85;
+  }
+
+  /* 订单列表 */
+  .order-list {
+    margin: 0 16px;
+    background: #fff;
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  }
+
+  .order-list-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a2980;
+  }
+
+  .order-more {
+    font-size: 12px;
+    font-weight: 400;
+    color: #8a94a6;
+  }
+
+  .order-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f2f5;
+  }
+
+  .order-item:last-child {
+    border-bottom: none;
+    padding-bottom: 4px;
+  }
+
+  .order-item:first-child {
+    padding-top: 4px;
+  }
+
+  .order-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    flex-shrink: 0;
+    margin-right: 12px;
+  }
+
+  .order-avatar.li { background: linear-gradient(135deg, #667eea, #764ba2); }
+  .order-avatar.zhang { background: linear-gradient(135deg, #f093fb, #f5576c); }
+  .order-avatar.wang { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+  .order-avatar.liu { background: linear-gradient(135deg, #fa709a, #fee140); }
+  .order-avatar.zhao { background: linear-gradient(135deg, #30cfd0, #330867); }
+  .order-avatar.chen { background: linear-gradient(135deg, #a8edea, #fed6e3); color: #666; }
+
+  .order-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .order-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 3px;
+  }
+
+  .order-desc {
+    font-size: 12px;
+    color: #8a94a6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .order-right {
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .order-amount {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 3px;
+    color: #51cf66;
+  }
+
+  .order-item.income .order-amount {
+    color: #51cf66;
+  }
+
+  .order-item.expense .order-amount {
+    color: #ff6b6b;
+  }
+
+  .order-time {
+    font-size: 11px;
+    color: #b0b8c4;
+  }
+
+  /* ========== 市场页面 ========== */
+  #page-market {
+    padding: 0 0 20px;
+  }
+
+  /* 顶部Banner */
+  .market-banner {
+    margin: 0 16px 14px;
+    height: 110px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #2c3e50 0%, #4a69bd 50%, #6c5ce7 100%);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    padding: 0 22px;
+    box-shadow: 0 8px 24px rgba(108, 92, 231, 0.25);
+  }
+
+  .market-banner-content {
+    position: relative;
+    z-index: 2;
+    color: #fff;
+  }
+
+  .market-banner-title {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  .market-banner-sub {
+    font-size: 13px;
+    font-weight: 400;
+    opacity: 0.9;
+    letter-spacing: 0.5px;
+  }
+
+  .market-banner-deco {
+    position: absolute;
+    right: 10px;
+    top: 0;
+    bottom: 0;
+    width: 100px;
+  }
+
+  .market-coin {
+    position: absolute;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ffd700, #ff9500);
+    color: #fff;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.9;
+    box-shadow: 0 4px 12px rgba(255, 149, 0, 0.3);
+  }
+
+  .market-coin.m1 {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    top: 15px;
+    right: 25px;
+  }
+
+  .market-coin.m2 {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    top: 55px;
+    right: 55px;
+  }
+
+  .market-coin.m3 {
+    width: 22px;
+    height: 22px;
+    font-size: 11px;
+    bottom: 15px;
+    right: 20px;
+    opacity: 0.6;
+  }
+
+  /* 卡片网格 */
+  .market-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 0 16px;
+  }
+
+  .market-card {
+    border-radius: 10px;
+    padding: 0;
+    background: #fff;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    display: flex;
+    min-height: 88px;
+  }
+
+  .market-card:active {
+    transform: scale(0.96);
+  }
+
+  /* 左侧大字 */
+  .card-left {
+    width: 52px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 800;
+    writing-mode: vertical-rl;
+    letter-spacing: 4px;
+  }
+
+  .card-right {
+    flex: 1;
+    padding: 8px 10px 8px 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+  }
+
+  .card-top {
+    text-align: right;
+  }
+
+  .card-time {
+    font-size: 10px;
+    color: #9aa3b2;
+    font-weight: 400;
+  }
+
+  .card-middle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 4px 0;
+  }
+
+  .card-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #333;
+  }
+
+  .card-reward {
+    font-size: 14px;
+    font-weight: 800;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  }
+
+  .card-bottom {
+    font-size: 11px;
+    color: #6b7280;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* 接单 - 绿色描边 */
+  .market-card.accept {
+    border: 1.5px solid #27ae60;
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.08);
+  }
+
+  .market-card.accept .card-left {
+    background: linear-gradient(180deg, #27ae60 0%, #2ecc71 100%);
+    color: #fff;
+  }
+
+  .market-card.accept .card-reward {
+    color: #27ae60;
+  }
+
+  /* 发布 - 黄色描边 */
+  .market-card.publish {
+    border: 1.5px solid #f39c12;
+    box-shadow: 0 2px 8px rgba(243, 156, 18, 0.08);
+  }
+
+  .market-card.publish .card-left {
+    background: linear-gradient(180deg, #f39c12 0%, #f1c40f 100%);
+    color: #fff;
+  }
+
+  .market-card.publish .card-reward {
+    color: #e67e22;
+  }
+
+  /* ========== 任务页面 ========== */
+  #page-task {
+    padding: 0 0 20px;
+  }
+
+  .task-header {
+    padding: 20px 20px 14px;
+    background: linear-gradient(135deg, #1a2980 0%, #667eea 50%, #8e2de2 100%);
+    color: #fff;
+  }
+
+  .task-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .task-sub {
+    font-size: 12px;
+    opacity: 0.85;
+  }
+
+  /* Tab切换 */
+  .task-tabs {
+    display: flex;
+    background: #fff;
+    padding: 0 16px;
+    position: relative;
+    border-bottom: 1px solid #f0f2f5;
+  }
+
+  .task-tab {
+    flex: 1;
+    text-align: center;
+    padding: 14px 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: #8a94a6;
+    cursor: pointer;
+    position: relative;
+    z-index: 2;
+    transition: all 0.25s ease;
+    user-select: none;
+  }
+
+  .task-tab.active {
+    color: #667eea;
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .task-tab-indicator {
+    position: absolute;
+    bottom: 0;
+    height: 3px;
+    width: 36px;
+    background: linear-gradient(90deg, #667eea, #8e2de2);
+    border-radius: 3px 3px 0 0;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), left 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 1;
+    left: calc(16.66% - 18px);
+  }
+
+  /* 面板 */
+  .task-panel {
+    display: none;
+    padding: 14px 16px;
+  }
+
+  .task-panel.active {
+    display: block;
+    animation: panelFadeIn 0.3s ease;
+  }
+
+  @keyframes panelFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* 任务卡片 */
+  .task-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .task-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed #eef0f4;
+  }
+
+  .task-status {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 100px;
+  }
+
+  .task-status.ongoing {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+  }
+
+  .task-status.settled {
+    background: rgba(46, 204, 113, 0.1);
+    color: #27ae60;
+  }
+
+  .task-status.dispute {
+    background: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+  }
+
+  .task-time {
+    font-size: 11px;
+    color: #b0b8c4;
+  }
+
+  .task-card-body {
+    margin-bottom: 10px;
+  }
+
+  .task-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .task-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #333;
+  }
+
+  .task-amount {
+    font-size: 16px;
+    font-weight: 800;
+    color: #667eea;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  }
+
+  .task-amount.green {
+    color: #27ae60;
+  }
+
+  .task-amount.red {
+    color: #e74c3c;
+  }
+
+  .task-desc {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.5;
+  }
+
+  .task-card-footer {
+    font-size: 11px;
+    color: #9aa3b2;
+  }
+
+  .task-settle-time {
+    color: #27ae60;
+    font-weight: 500;
+  }
+
+  .task-dispute-tip {
+    color: #e74c3c;
+    font-weight: 500;
+  }
+
+  /* 进行中卡片左侧色条 */
+  .task-card.ongoing::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, #667eea, #8e2de2);
+  }
+
+  /* 已结算卡片左侧色条 */
+  .task-card.settled::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, #27ae60, #2ecc71);
+  }
+
+  /* 处理中卡片左侧色条 */
+  .task-card.dispute::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, #e74c3c, #c0392b);
+  }
+
+  .empty-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 100px 20px;
+    color: #c0c6d0;
+  }
+
+  .empty-icon {
+    width: 72px;
+    height: 72px;
+    margin-bottom: 16px;
+    opacity: 0.4;
+  }
+
+  .empty-text {
+    font-size: 14px;
+    color: #b0b8c4;
+    letter-spacing: 0.5px;
+  }
+
+  /* ========== 我的页面 ========== */
+  .mine-page {
+    padding: 0 0 20px;
+  }
+
+  /* 顶部渐变头部 */
+  .mine-header {
+    background: linear-gradient(135deg, #1a2980 0%, #667eea 50%, #8e2de2 100%);
+    padding: 24px 20px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mine-header::before {
+    content: '';
+    position: absolute;
+    top: -60px;
+    right: -40px;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    filter: blur(30px);
+  }
+
+  .mine-header::after {
+    content: '';
+    position: absolute;
+    bottom: -40px;
+    left: -30px;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: rgba(142, 45, 226, 0.3);
+    filter: blur(30px);
+  }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+  }
+
+  .avatar svg {
+    width: 28px;
+    height: 28px;
+    stroke: #fff;
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .user-detail {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .user-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  .user-id {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    letter-spacing: 0.3px;
+  }
+
+  .setting-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    flex-shrink: 0;
+  }
+
+  .setting-btn svg {
+    width: 20px;
+    height: 20px;
+    stroke: #fff;
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* 资产卡片 */
+  .asset-card {
+    margin: -50px 16px 0;
+    background: #fff;
+    border-radius: 18px;
+    padding: 16px 18px 14px;
+    box-shadow: 0 10px 30px rgba(26, 41, 128, 0.1);
+    position: relative;
+    z-index: 2;
+  }
+
+  .asset-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20px;
+    right: 20px;
+    height: 1px;
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(102, 126, 234, 0.2) 50%, 
+      transparent 100%);
+  }
+
+  /* 资产数字区 */
+  .asset-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 12px;
+    position: relative;
+  }
+
+  .asset-coin-row {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    margin-bottom: 5px;
+  }
+
+  .coin-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(253, 160, 133, 0.4);
+  }
+
+  .coin-icon svg {
+    width: 12px;
+    height: 12px;
+    stroke: #fff;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .coin-amount {
+    font-size: 28px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #1a2980 0%, #667eea 50%, #8e2de2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -1px;
+    line-height: 1;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
+  }
+
+  .coin-unit {
+    font-size: 12px;
+    font-weight: 600;
+    color: #8e2de2;
+    letter-spacing: 0.5px;
+  }
+
+  .asset-divider {
+    width: 30px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #e0e4ec, transparent);
+    margin: 4px 0 6px;
+    border-radius: 1px;
+  }
+
+  .asset-cny-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .cny-label {
+    font-size: 12px;
+    color: #a0aec0;
+    font-weight: 400;
+  }
+
+  .cny-amount {
+    font-size: 18px;
+    font-weight: 600;
+    color: #4a5568;
+    letter-spacing: 0.3px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
+  }
+
+  .cny-unit {
+    font-size: 11px;
+    color: #a0aec0;
+    margin-left: 2px;
+  }
+
+  /* 功能按钮组 - 三按钮一行 */
+  .action-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding-top: 10px;
+    border-top: 1px solid #f0f2f7;
+  }
+
+  .action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 4px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .action-btn:active {
+    transform: scale(0.94);
+  }
+
+  .action-btn-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .action-btn-icon svg {
+    width: 18px;
+    height: 18px;
+    stroke: #fff;
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .action-btn-label {
+    font-size: 11px;
+    color: #4a5568;
+    font-weight: 500;
+  }
+
+  .btn-recharge .action-btn-icon {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    box-shadow: 0 3px 8px rgba(79, 172, 254, 0.3);
+  }
+
+  .btn-withdraw .action-btn-icon {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    box-shadow: 0 3px 8px rgba(250, 112, 154, 0.3);
+  }
+
+  .btn-transfer .action-btn-icon {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 3px 8px rgba(102, 126, 234, 0.3);
+  }
+
+  /* 派币分红 - 独立大按钮 */
+  .dividend-banner {
+    margin: 16px 16px 0;
+    border-radius: 16px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #ee0979 100%);
+    box-shadow: 0 8px 24px rgba(245, 87, 108, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .dividend-banner:active {
+    transform: scale(0.98);
+  }
+
+  .dividend-banner::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .dividend-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .dividend-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .dividend-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: #fff;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .dividend-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .dividend-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+  }
+
+  .dividend-subtitle {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .dividend-right {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #fff;
+  }
+
+  .dividend-right span {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .dividend-right svg {
+    width: 16px;
+    height: 16px;
+    stroke: #fff;
+    fill: none;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* 菜单列表 */
+  .menu-section {
+    margin: 20px 16px 0;
+    background: #fff;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    padding: 16px 18px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    position: relative;
+  }
+
+  .menu-item:active {
+    background: #f7f8fc;
+  }
+
+  .menu-item + .menu-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 56px;
+    right: 18px;
+    height: 1px;
+    background: #f0f2f7;
+  }
+
+  .menu-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+
+  .menu-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke: #fff;
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .menu-dividend .menu-icon {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  }
+
+  .menu-game .menu-icon {
+    background: linear-gradient(135deg, #5ee7df 0%, #b490ca 100%);
+  }
+
+  .menu-desc .menu-icon {
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+  }
+
+  .menu-about .menu-icon {
+    background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
+  }
+
+  .menu-text {
+    flex: 1;
+    font-size: 15px;
+    color: #2d3748;
+    font-weight: 500;
+  }
+
+  .menu-arrow {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .menu-arrow svg {
+    width: 16px;
+    height: 16px;
+    stroke: #cbd5e0;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* ========== 弹层页面 ========== */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  .modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .modal-page {
+    width: 100%;
+    max-width: 100%;
+    height: 85%;
+    background: #f7f8fc;
+    border-radius: 24px 24px 0 0;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .modal-overlay.active .modal-page {
+    transform: translateY(0);
+  }
+
+  /* 接单详情弹层 - 占60%高度 */
+  .modal-overlay.order-overlay {
+    align-items: center;
+  }
+
+  .modal-overlay.order-overlay .modal-page {
+    height: 60%;
+    border-radius: 20px;
+    transform: translateY(100%) scale(0.9);
+  }
+
+  .modal-overlay.order-overlay.active .modal-page {
+    transform: translateY(0) scale(1);
+  }
+
+  .order-detail {
+    padding: 0 20px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .order-detail-section {
+    margin-bottom: 16px;
+  }
+
+  .order-detail-label {
+    font-size: 12px;
+    color: #9aa3b2;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .order-detail-value {
+    font-size: 15px;
+    color: #333;
+    font-weight: 600;
+  }
+
+  .order-detail-value.amount {
+    font-size: 22px;
+    font-weight: 800;
+    color: #27ae60;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  }
+
+  .order-detail-desc {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.6;
+    background: #f0f5ff;
+    border-radius: 10px;
+    padding: 12px 14px;
+    border-left: 3px solid #27ae60;
+  }
+
+  .order-detail-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #e8eaf0, transparent);
+    margin: 14px 0;
+  }
+
+  .order-actions {
+    display: flex;
+    gap: 12px;
+    padding: 16px 20px;
+    background: #fff;
+    border-top: 1px solid #f0f2f5;
+  }
+
+  .order-btn {
+    flex: 1;
+    height: 46px;
+    border-radius: 23px;
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .order-btn:active {
+    transform: scale(0.95);
+  }
+
+  .order-btn.confirm {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(39, 174, 96, 0.35);
+  }
+
+  .order-btn.cancel {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(231, 76, 60, 0.35);
+  }
+
+  /* 任务发布弹层 - 占70%高度 */
+  .modal-overlay.publish-overlay {
+    align-items: center;
+  }
+
+  .modal-overlay.publish-overlay .modal-page {
+    height: 70%;
+    border-radius: 20px;
+    transform: translateY(100%) scale(0.9);
+  }
+
+  .modal-overlay.publish-overlay.active .modal-page {
+    transform: translateY(0) scale(1);
+  }
+
+  .publish-form {
+    padding: 0 20px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .form-group {
+    margin-bottom: 18px;
+  }
+
+  .form-label {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .form-label .num {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #8e2de2);
+    color: #fff;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+
+  .form-input {
+    width: 100%;
+    height: 44px;
+    border: 1.5px solid #e8eaf0;
+    border-radius: 12px;
+    padding: 0 16px;
+    font-size: 15px;
+    color: #333;
+    background: #f9fafc;
+    outline: none;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+  }
+
+  .form-input:focus {
+    border-color: #667eea;
+    background: #fff;
+  }
+
+  .form-textarea {
+    width: 100%;
+    min-height: 60px;
+    border: 1.5px solid #e8eaf0;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 15px;
+    color: #333;
+    background: #f9fafc;
+    outline: none;
+    resize: none;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+    font-family: inherit;
+  }
+
+  .form-textarea:focus {
+    border-color: #667eea;
+    background: #fff;
+  }
+
+  .form-time {
+    width: 100%;
+    height: 44px;
+    border: 1.5px solid #e8eaf0;
+    border-radius: 12px;
+    padding: 0 16px;
+    font-size: 15px;
+    color: #333;
+    background: #f9fafc;
+    outline: none;
+    box-sizing: border-box;
+  }
+
+  .currency-select {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .currency-option {
+    flex: 1;
+    height: 40px;
+    border: 1.5px solid #e8eaf0;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #8a94a6;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+
+  .currency-option.active {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.08);
+    color: #667eea;
+  }
+
+  .publish-actions {
+    display: flex;
+    gap: 12px;
+    padding: 16px 20px;
+    background: #fff;
+    border-top: 1px solid #f0f2f5;
+  }
+
+  .publish-btn {
+    flex: 1;
+    height: 46px;
+    border-radius: 23px;
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .publish-btn:active {
+    transform: scale(0.95);
+  }
+
+  .publish-btn.confirm {
+    background: linear-gradient(135deg, #667eea, #8e2de2);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35);
+  }
+
+  .publish-btn.cancel {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(231, 76, 60, 0.35);
+  }
+
+  /* 任务订单详情弹层 - 70%高度 */
+  .modal-overlay.task-detail-overlay {
+    align-items: center;
+  }
+
+  .modal-overlay.task-detail-overlay .modal-page {
+    height: 70%;
+    border-radius: 20px;
+    transform: translateY(100%) scale(0.9);
+    border: 2.5px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .modal-overlay.task-detail-overlay.active .modal-page {
+    transform: translateY(0) scale(1);
+  }
+
+  /* 进行中 - 紫色 */
+  .modal-overlay.task-detail-overlay.purple .modal-page {
+    border-color: #8e2de2;
+    box-shadow: 0 0 30px rgba(142, 45, 226, 0.25);
+  }
+
+  .modal-overlay.task-detail-overlay.purple .detail-header {
+    background: linear-gradient(135deg, #667eea, #8e2de2);
+  }
+
+  .modal-overlay.task-detail-overlay.purple .detail-tag {
+    background: rgba(142, 45, 226, 0.1);
+    color: #8e2de2;
+  }
+
+  .modal-overlay.task-detail-overlay.purple .detail-btn.primary {
+    background: linear-gradient(135deg, #667eea, #8e2de2);
+    box-shadow: 0 4px 14px rgba(142, 45, 226, 0.35);
+  }
+
+  /* 已结算 - 绿色 */
+  .modal-overlay.task-detail-overlay.green .modal-page {
+    border-color: #27ae60;
+    box-shadow: 0 0 30px rgba(39, 174, 96, 0.25);
+  }
+
+  .modal-overlay.task-detail-overlay.green .detail-header {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+  }
+
+  .modal-overlay.task-detail-overlay.green .detail-tag {
+    background: rgba(39, 174, 96, 0.1);
+    color: #27ae60;
+  }
+
+  .modal-overlay.task-detail-overlay.green .detail-btn.primary {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    box-shadow: 0 4px 14px rgba(39, 174, 96, 0.35);
+  }
+
+  /* 处理中 - 红色 */
+  .modal-overlay.task-detail-overlay.red .modal-page {
+    border-color: #e74c3c;
+    box-shadow: 0 0 30px rgba(231, 76, 60, 0.25);
+  }
+
+  .modal-overlay.task-detail-overlay.red .detail-header {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+  }
+
+  .modal-overlay.task-detail-overlay.red .detail-tag {
+    background: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+  }
+
+  .modal-overlay.task-detail-overlay.red .detail-btn.primary {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    box-shadow: 0 4px 14px rgba(231, 76, 60, 0.35);
+  }
+
+  .detail-header {
+    flex-shrink: 0;
+    padding: 20px 20px 18px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .detail-header::before {
+    content: '';
+    position: absolute;
+    right: -30px;
+    top: -30px;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+  }
+
+  .detail-header::after {
+    content: '';
+    position: absolute;
+    right: 40px;
+    bottom: -50px;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+  }
+
+  .detail-header-title {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .detail-header-sub {
+    font-size: 12px;
+    opacity: 0.9;
+    position: relative;
+    z-index: 2;
+  }
+
+  .detail-header .modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    z-index: 3;
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .detail-header .modal-close svg {
+    width: 16px;
+    height: 16px;
+    stroke: #fff;
+  }
+
+  .detail-body {
+    flex: 1;
+    padding: 16px 20px;
+    overflow-y: auto;
+    background: #f7f8fc;
+  }
+
+  .detail-section {
+    background: #fff;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .detail-section-title {
+    font-size: 12px;
+    color: #9aa3b2;
+    margin-bottom: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .detail-section-title::before {
+    content: '';
+    width: 3px;
+    height: 12px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #667eea, #8e2de2);
+  }
+
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px dashed #eef0f4;
+  }
+
+  .detail-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .detail-row:first-child {
+    padding-top: 0;
+  }
+
+  .detail-label {
+    font-size: 13px;
+    color: #8a94a6;
+  }
+
+  .detail-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .detail-value.amount {
+    font-size: 18px;
+    font-weight: 800;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  }
+
+  .detail-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 100px;
+    margin-left: 8px;
+  }
+
+  .detail-desc-box {
+    background: #f0f5ff;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #555;
+    line-height: 1.6;
+    border-left: 3px solid #667eea;
+  }
+
+  .detail-status-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fff;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .detail-status-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #8e2de2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .detail-status-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: #fff;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .detail-status-text {
+    flex: 1;
+  }
+
+  .detail-status-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 3px;
+  }
+
+  .detail-status-desc {
+    font-size: 12px;
+    color: #8a94a6;
+  }
+
+  .detail-footer {
+    flex-shrink: 0;
+    display: flex;
+    gap: 12px;
+    padding: 14px 20px;
+    background: #fff;
+    border-top: 1px solid #f0f2f5;
+  }
+
+  .detail-btn {
+    flex: 1;
+    height: 44px;
+    border-radius: 22px;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+  }
+
+  .detail-btn:active {
+    transform: scale(0.95);
+  }
+
+  .detail-btn.secondary {
+    background: #f0f2f5;
+    color: #6b7280;
+    box-shadow: none;
+  }
+
+  /* 进度视图样式 */
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .progress-role {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+  }
+
+  .progress-order-no {
+    font-size: 12px;
+    color: #9aa3b2;
+  }
+
+  .progress-steps {
+    background: #fff;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .progress-step {
+    display: flex;
+    align-items: flex-start;
+    position: relative;
+    padding-bottom: 20px;
+  }
+
+  .progress-step:last-child {
+    padding-bottom: 0;
+  }
+
+  .step-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    flex-shrink: 0;
+    margin-top: 4px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .progress-step.active .step-dot {
+    background: linear-gradient(135deg, #667eea, #8e2de2);
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+  }
+
+  .step-line {
+    position: absolute;
+    left: 6px;
+    top: 20px;
+    bottom: 0;
+    width: 2px;
+    background: #e5e7eb;
+    z-index: 1;
+  }
+
+  .progress-step.active .step-line {
+    background: linear-gradient(180deg, #667eea, #8e2de2);
+  }
+
+  .progress-step:last-child .step-line {
+    display: none;
+  }
+
+  .step-content {
+    margin-left: 14px;
+    flex: 1;
+  }
+
+  .step-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 3px;
+  }
+
+  .step-desc {
+    font-size: 12px;
+    color: #8a94a6;
+    margin-bottom: 3px;
+  }
+
+  .step-time {
+    font-size: 11px;
+    color: #b0b8c4;
+  }
+
+  .status-pills {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .status-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 0;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #8a94a6;
+    background: #f0f2f5;
+    transition: all 0.2s ease;
+  }
+
+  .status-pill.active {
+    background: linear-gradient(135deg, #667eea, #8e2de2);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  }
+
+  .progress-current-desc {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.6;
+    padding: 10px 12px;
+    background: #f0f5ff;
+    border-radius: 10px;
+    border-left: 3px solid #667eea;
+  }
+
+  /* 已结算视图样式 */
+  .settled-big-check {
+    text-align: center;
+    padding: 20px 0 16px;
+  }
+
+  .settled-check-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    margin: 0 auto 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 20px rgba(39, 174, 96, 0.35);
+    animation: checkPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes checkPop {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .settled-check-icon svg {
+    width: 32px;
+    height: 32px;
+    stroke: #fff;
+  }
+
+  .settled-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #27ae60;
+    margin-bottom: 4px;
+  }
+
+  .settled-sub {
+    font-size: 12px;
+    color: #8a94a6;
+  }
+
+  .settled-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px dashed #eef0f4;
+  }
+
+  .settled-row:last-of-type {
+    border-bottom: none;
+  }
+
+  .settled-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .settled-dot.ok {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    position: relative;
+  }
+
+  .settled-dot.ok::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 6px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(-45deg);
+    top: 5px;
+    left: 5px;
+  }
+
+  .settled-text {
+    flex: 1;
+  }
+
+  .settled-row-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 2px;
+  }
+
+  .settled-row-desc {
+    font-size: 12px;
+    color: #8a94a6;
+  }
+
+  .settled-amount {
+    margin-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, rgba(39, 174, 96, 0.08), rgba(46, 204, 113, 0.08));
+    border-radius: 12px;
+    border-left: 3px solid #27ae60;
+  }
+
+  .settled-amount-label {
+    font-size: 13px;
+    color: #6b7280;
+  }
+
+  .settled-amount-value {
+    font-size: 20px;
+    font-weight: 800;
+    color: #27ae60;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  }
+
+  /* 异常处理视图样式 */
+  .dispute-warning {
+    text-align: center;
+    padding: 20px 0 16px;
+  }
+
+  .dispute-warning-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    margin: 0 auto 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 20px rgba(231, 76, 60, 0.35);
+    animation: shake 0.5s ease;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+
+  .dispute-warning-icon svg {
+    width: 32px;
+    height: 32px;
+    stroke: #fff;
+  }
+
+  .dispute-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #e74c3c;
+    margin-bottom: 4px;
+  }
+
+  .dispute-sub {
+    font-size: 12px;
+    color: #8a94a6;
+  }
+
+  .dispute-reason-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .dispute-reason-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(231, 76, 60, 0.06);
+    border-radius: 10px;
+    border-left: 3px solid #e74c3c;
+  }
+
+  .dispute-reason-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .dispute-reason-text {
+    flex: 1;
+    font-size: 13px;
+    color: #555;
+    line-height: 1.5;
+    padding-top: 2px;
+  }
+
+  .dispute-status-badge {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .dispute-status-text {
+    display: inline-block;
+    padding: 6px 16px;
+    background: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .dispute-current-desc {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.6;
+    padding: 10px 12px;
+    background: rgba(231, 76, 60, 0.05);
+    border-radius: 10px;
+    border-left: 3px solid #e74c3c;
+  }
+
+  .dispute-amount {
+    text-align: center;
+    padding: 14px;
+    background: rgba(231, 76, 60, 0.06);
+    border-radius: 12px;
+  }
+
+  .dispute-amount-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 800;
+    color: #e74c3c;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+    margin-bottom: 4px;
+  }
+
+  .dispute-amount-label {
+    font-size: 12px;
+    color: #8a94a6;
+  }
+
+  /* 派币分红弹层 */
+  .dividend-body {
+    padding: 0 20px 20px;
+    overflow-y: auto;
+    height: calc(100% - 56px);
+  }
+
+  .dividend-total-card {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    border-radius: 16px;
+    padding: 20px;
+    color: #fff;
+    text-align: center;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .dividend-total-card::before {
+    content: '';
+    position: absolute;
+    right: -30px;
+    top: -30px;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+  }
+
+  .dividend-total-label {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-bottom: 6px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .dividend-total-value {
+    font-size: 32px;
+    font-weight: 800;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+    position: relative;
+    z-index: 2;
+  }
+
+  .dividend-total-tip {
+    font-size: 11px;
+    opacity: 0.8;
+    margin-top: 6px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .dividend-list-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 10px;
+    padding: 0 4px;
+  }
+
+  .dividend-list {
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .dividend-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid #f0f2f5;
+  }
+
+  .dividend-item:last-child {
+    border-bottom: none;
+  }
+
+  .dividend-date {
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
+    width: 72px;
+    flex-shrink: 0;
+  }
+
+  .dividend-info {
+    flex: 1;
+  }
+
+  .dividend-month {
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 2px;
+  }
+
+  .dividend-time {
+    font-size: 11px;
+    color: #b0b8c4;
+  }
+
+  .dividend-amount {
+    font-size: 16px;
+    font-weight: 800;
+    color: #27ae60;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  }
+
+  .dividend-amount.zero {
+    color: #b0b8c4;
+  }
+
+  /* 游戏说明弹层 */
+  .guide-body {
+    padding: 0 20px 20px;
+    overflow-y: auto;
+    height: calc(100% - 56px);
+  }
+
+  .guide-section {
+    background: #fff;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .guide-section-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #333;
+    margin-bottom: 10px;
+  }
+
+  .guide-section-content {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.7;
+  }
+
+  .guide-section-content p {
+    margin: 4px 0;
+  }
+
+  .guide-section-content strong {
+    color: #667eea;
+    font-weight: 700;
+  }
+
+  /* 充值弹层 */
+  .recharge-body {
+    padding: 0 20px 16px;
+    overflow-y: auto;
+  }
+
+  .recharge-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .recharge-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 10px;
+  }
+
+  .recharge-input {
+    width: 100%;
+    height: 44px;
+    border: 1.5px solid #e8ecf1;
+    border-radius: 10px;
+    padding: 0 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+
+  .recharge-input:focus {
+    border-color: #667eea;
+  }
+
+  .recharge-address-card {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.06), rgba(142, 45, 226, 0.06));
+    border-radius: 14px;
+    padding: 16px;
+    border: 1.5px dashed rgba(102, 126, 234, 0.3);
+  }
+
+  .recharge-address-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #667eea;
+    margin-bottom: 10px;
+  }
+
+  .recharge-address-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .recharge-address-text {
+    flex: 1;
+    font-size: 12px;
+    color: #555;
+    word-break: break-all;
+    font-family: monospace;
+    background: #fff;
+    padding: 10px 12px;
+    border-radius: 8px;
+    line-height: 1.5;
+  }
+
+  .recharge-copy-btn {
+    flex-shrink: 0;
+    height: 34px;
+    padding: 0 14px;
+    background: linear-gradient(135deg, #667eea, #8e2de2);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .recharge-copy-btn:active {
+    transform: scale(0.95);
+  }
+
+  .recharge-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px;
+    color: #8a94a6;
+    line-height: 1.5;
+  }
+
+  .recharge-tip svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: #f39c12;
+  }
+
+  .recharge-actions {
+    display: flex;
+    gap: 12px;
+    padding: 0 20px 20px;
+  }
+
+  .recharge-btn {
+    flex: 1;
+    height: 44px;
+    border-radius: 22px;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    color: #fff;
+  }
+
+  .recharge-btn:active {
+    transform: scale(0.95);
+  }
+
+  .recharge-btn.cancel {
+    background: #f0f2f5;
+    color: #6b7280;
+  }
+
+  .recharge-btn.confirm {
+    background: linear-gradient(135deg, #667eea, #8e2de2);
+    box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35);
+  }
+
+  /* 提现弹层 */
+  .withdraw-body {
+    padding: 0 20px 16px;
+    overflow-y: auto;
+  }
+
+  .withdraw-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .withdraw-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 10px;
+  }
+
+  .withdraw-input {
+    width: 100%;
+    height: 44px;
+    border: 1.5px solid #e8ecf1;
+    border-radius: 10px;
+    padding: 0 14px;
+    font-size: 14px;
+    color: #333;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+
+  .withdraw-input:focus {
+    border-color: #f39c12;
+  }
+
+  .withdraw-balance {
+    font-size: 12px;
+    color: #8a94a6;
+    margin-top: 8px;
+    text-align: right;
+  }
+
+  .withdraw-tip {
+    font-size: 12px;
+    color: #f39c12;
+    text-align: center;
+    padding: 10px;
+    background: rgba(243, 156, 18, 0.08);
+    border-radius: 10px;
+  }
+
+  .withdraw-actions {
+    display: flex;
+    gap: 12px;
+    padding: 0 20px 20px;
+  }
+
+  .withdraw-btn {
+    flex: 1;
+    height: 44px;
+    border-radius: 22px;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    color: #fff;
+  }
+
+  .withdraw-btn:active {
+    transform: scale(0.95);
+  }
+
+  .withdraw-btn.cancel {
+    background: #f0f2f5;
+    color: #6b7280;
+  }
+
+  .withdraw-btn.confirm {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    box-shadow: 0 4px 14px rgba(243, 156, 18, 0.35);
+  }
+
+  /* 划转弹层 */
+  .transfer-body {
+    padding: 0 20px 16px;
+    overflow-y: auto;
+  }
+
+  .transfer-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .transfer-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 10px;
+  }
+
+  .transfer-input {
+    width: 100%;
+    height: 44px;
+    border: 1.5px solid #e8ecf1;
+    border-radius: 10px;
+    padding: 0 14px;
+    font-size: 14px;
+    color: #333;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+
+  .transfer-input:focus {
+    border-color: #27ae60;
+  }
+
+  .transfer-balance {
+    font-size: 12px;
+    color: #8a94a6;
+    margin-top: 8px;
+    text-align: right;
+  }
+
+  .transfer-tip {
+    font-size: 12px;
+    color: #27ae60;
+    text-align: center;
+    padding: 10px;
+    background: rgba(39, 174, 96, 0.08);
+    border-radius: 10px;
+  }
+
+  .transfer-actions {
+    display: flex;
+    gap: 12px;
+    padding: 0 20px 20px;
+  }
+
+  .transfer-btn {
+    flex: 1;
+    height: 44px;
+    border-radius: 22px;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    color: #fff;
+  }
+
+  .transfer-btn:active {
+    transform: scale(0.95);
+  }
+
+  .transfer-btn.cancel {
+    background: #f0f2f5;
+    color: #6b7280;
+  }
+
+  .transfer-btn.confirm {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    box-shadow: 0 4px 14px rgba(39, 174, 96, 0.35);
+  }
+
+  /* 划转二次确认 */
+  .transfer-confirm-body {
+    padding: 24px 20px 16px;
+    text-align: center;
+  }
+
+  .transfer-confirm-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    margin: 0 auto 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(243, 156, 18, 0.35);
+  }
+
+  .transfer-confirm-icon svg {
+    width: 28px;
+    height: 28px;
+    stroke: #fff;
+  }
+
+  .transfer-confirm-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #333;
+    margin-bottom: 6px;
+  }
+
+  .transfer-confirm-desc {
+    font-size: 12px;
+    color: #8a94a6;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  .transfer-confirm-info {
+    background: #f7f8fc;
+    border-radius: 12px;
+    padding: 12px 14px;
+    text-align: left;
+  }
+
+  .transfer-confirm-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+  }
+
+  .transfer-confirm-row span:first-child {
+    font-size: 12px;
+    color: #8a94a6;
+  }
+
+  .transfer-confirm-amount {
+    font-size: 16px;
+    font-weight: 800;
+    color: #27ae60;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  }
+
+  .transfer-confirm-address {
+    font-size: 11px;
+    color: #555;
+    font-family: monospace;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  .transfer-confirm-actions {
+    display: flex;
+    gap: 10px;
+    padding: 0 20px 20px;
+  }
+
+  .tc-btn {
+    flex: 1;
+    height: 42px;
+    border-radius: 21px;
+    font-size: 14px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    color: #fff;
+  }
+
+  .tc-btn:active {
+    transform: scale(0.95);
+  }
+
+  .tc-btn.cancel {
+    background: #f0f2f5;
+    color: #6b7280;
+  }
+
+  .tc-btn.confirm {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.35);
+  }
+
+  /* 生态设置弹窗 - 正方形居中 */
+  .eco-settings-box {
+    width: 300px;
+    height: 300px;
+    background: #fff;
+    border-radius: 20px;
+    padding: 24px 20px 20px;
+    box-sizing: border-box;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    animation: ecoBoxIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    flex-direction: column;
+  }
+
+  @keyframes ecoBoxIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .eco-settings-title {
+    font-size: 17px;
+    font-weight: 800;
+    color: #333;
+    text-align: center;
+    margin-bottom: 18px;
+  }
+
+  .eco-settings-group {
+    margin-bottom: 16px;
+  }
+
+  .eco-settings-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #555;
+    margin-bottom: 10px;
+  }
+
+  .eco-color-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .eco-color-dot {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  }
+
+  .eco-color-dot::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+  }
+
+  .eco-color-dot.active::after {
+    border-color: #667eea;
+  }
+
+  .eco-color-dot:active {
+    transform: scale(0.9);
+  }
+
+  .eco-font-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .eco-font-btn {
+    flex: 1;
+    height: 34px;
+    border-radius: 8px;
+    background: #f0f2f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .eco-font-btn[data-font="xs"] { font-size: 11px; }
+  .eco-font-btn[data-font="sm"] { font-size: 12px; }
+  .eco-font-btn[data-font="md"] { font-size: 13px; }
+  .eco-font-btn[data-font="lg"] { font-size: 14px; }
+
+  .eco-font-btn.active {
+    background: linear-gradient(135deg, #667eea, #8e2de2);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  }
+
+  .eco-font-btn:active {
+    transform: scale(0.95);
+  }
+
+  .eco-settings-actions {
+    margin-top: auto;
+    display: flex;
+    justify-content: center;
+  }
+
+  .eco-settings-close {
+    width: 120px;
+    height: 38px;
+    border-radius: 19px;
+    background: linear-gradient(135deg, #667eea, #8e2de2);
+    color: #fff;
+    border: none;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+    transition: transform 0.2s ease;
+  }
+
+  .eco-settings-close:active {
+    transform: scale(0.95);
+  }
+
+  /* 背景色切换全局类 */
+  body.bg-green .page-banner,
+  body.bg-green .profile-header,
+  body.bg-green .task-header {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+  }
+  body.bg-green .tab-indicator,
+  body.bg-green .splash-title,
+  body.bg-green .coin-amount {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  body.bg-green .nav-item.active svg { color: #27ae60; }
+  body.bg-green .nav-item.active .nav-dot { background: #27ae60; }
+
+  body.bg-red .page-banner,
+  body.bg-red .profile-header,
+  body.bg-red .task-header {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+  }
+  body.bg-red .tab-indicator,
+  body.bg-red .splash-title,
+  body.bg-red .coin-amount {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  body.bg-red .nav-item.active svg { color: #e74c3c; }
+  body.bg-red .nav-item.active .nav-dot { background: #e74c3c; }
+
+  body.bg-yellow .page-banner,
+  body.bg-yellow .profile-header,
+  body.bg-yellow .task-header {
+    background: linear-gradient(135deg, #f39c12, #f1c40f);
+  }
+  body.bg-yellow .tab-indicator,
+  body.bg-yellow .splash-title,
+  body.bg-yellow .coin-amount {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  body.bg-yellow .nav-item.active svg { color: #f39c12; }
+  body.bg-yellow .nav-item.active .nav-dot { background: #f39c12; }
+
+  body.bg-white .page-banner,
+  body.bg-white .profile-header,
+  body.bg-white .task-header {
+    background: linear-gradient(135deg, #ffffff, #f0f2f5);
+  }
+  body.bg-white .profile-name,
+  body.bg-white .task-header-title { color: #333; }
+  body.bg-white .tab-indicator,
+  body.bg-white .splash-title,
+  body.bg-white .coin-amount {
+    background: linear-gradient(135deg, #333, #666);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  body.bg-white .nav-item.active svg { color: #333; }
+  body.bg-white .nav-item.active .nav-dot { background: #333; }
+
+  body.bg-black .page-banner,
+  body.bg-black .profile-header,
+  body.bg-black .task-header {
+    background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+  }
+  body.bg-black .tab-indicator,
+  body.bg-black .splash-title,
+  body.bg-black .coin-amount {
+    background: linear-gradient(135deg, #fff, #bbb);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  body.bg-black .nav-item.active svg { color: #fff; }
+  body.bg-black .nav-item.active .nav-dot { background: #fff; }
+
+  /* 字体大小切换 */
+  body.font-xs { font-size: 13px; }
+  body.font-sm { font-size: 14px; }
+  body.font-md { font-size: 15px; }
+  body.font-lg { font-size: 16px; }
+
+  .modal-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    background: #fff;
+    position: relative;
+  }
+
+  .modal-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #f0f2f7;
+  }
+
+  .modal-close {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: background 0.2s ease;
+  }
+
+  .modal-close:active {
+    background: #f0f2f7;
+  }
+
+  .modal-close svg {
+    width: 22px;
+    height: 22px;
+    stroke: #4a5568;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .modal-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #2d3748;
+    letter-spacing: 0.5px;
+  }
+
+  .modal-placeholder {
+    width: 32px;
+  }
+
+  .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px;
+  }
+
+  /* ========== 关于我们页面 ========== */
+  .about-hero {
+    background: linear-gradient(135deg, #1a2980 0%, #667eea 50%, #8e2de2 100%);
+    border-radius: 20px;
+    padding: 24px 20px;
+    color: #fff;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .about-hero::before {
+    content: '';
+    position: absolute;
+    top: -40px;
+    right: -30px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    filter: blur(20px);
+  }
+
+  .about-logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+  }
+
+  .about-logo svg {
+    width: 30px;
+    height: 30px;
+    stroke: #fff;
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .about-hero h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+
+  .about-hero p {
+    font-size: 13px;
+    opacity: 0.85;
+    letter-spacing: 0.3px;
+  }
+
+  .about-section {
+    background: #fff;
+    border-radius: 18px;
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+
+  .about-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .about-section h3::before {
+    content: '';
+    width: 4px;
+    height: 16px;
+    background: linear-gradient(180deg, #667eea, #8e2de2);
+    border-radius: 2px;
+  }
+
+  .about-section p {
+    font-size: 14px;
+    color: #4a5568;
+    line-height: 1.7;
+    letter-spacing: 0.2px;
+  }
+
+  .shareholder-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .shareholder-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: #f7f8fc;
+    border-radius: 12px;
+  }
+
+  .shareholder-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .shareholder-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .shareholder-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 2px;
+  }
+
+  .shareholder-role {
+    font-size: 12px;
+    color: #8a94a6;
+  }
+
+  .game-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .game-tag {
+    padding: 6px 14px;
+    background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
+    color: #667eea;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 20px;
+  }
+
+  .about-footer {
+    text-align: center;
+    padding: 20px 0 10px;
+    color: #a0aec0;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ========== 游戏设置页面 ========== */
+  .setting-group {
+    background: #fff;
+    border-radius: 18px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+
+  .setting-group-title {
+    padding: 14px 18px 8px;
+    font-size: 13px;
+    color: #8a94a6;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+
+  .setting-row {
+    display: flex;
+    align-items: center;
+    padding: 14px 18px;
+    position: relative;
+  }
+
+  .setting-row + .setting-row::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 18px;
+    right: 18px;
+    height: 1px;
+    background: #f0f2f7;
+  }
+
+  .setting-row:active {
+    background: #fafbfc;
+  }
+
+  .setting-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+
+  .setting-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke: #fff;
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .setting-icon.size {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  }
+
+  .setting-icon.mute {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  }
+
+  .setting-icon.vibrate {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  .setting-icon.sound {
+    background: linear-gradient(135deg, #5ee7df 0%, #b490ca 100%);
+  }
+
+  .setting-label {
+    flex: 1;
+    font-size: 15px;
+    color: #2d3748;
+    font-weight: 500;
+  }
+
+  .setting-value {
+    font-size: 14px;
+    color: #8a94a6;
+    margin-right: 6px;
+  }
+
+  .setting-arrow {
+    width: 16px;
+    height: 16px;
+  }
+
+  .setting-arrow svg {
+    width: 16px;
+    height: 16px;
+    stroke: #cbd5e0;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* 开关 */
+  .switch {
+    position: relative;
+    width: 48px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #e2e8f0;
+    border-radius: 28px;
+    transition: 0.3s ease;
+  }
+
+  .switch-slider::before {
+    content: '';
+    position: absolute;
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  }
+
+  .switch input:checked + .switch-slider {
+    background: linear-gradient(135deg, #667eea 0%, #8e2de2 100%);
+  }
+
+  .switch input:checked + .switch-slider::before {
+    transform: translateX(20px);
+  }
+
+  /* 大小选择弹层 */
+  .size-selector {
+    display: none;
+    padding: 12px 18px 16px;
+    background: #fafbfc;
+  }
+
+  .size-selector.show {
+    display: block;
+  }
+
+  .size-options {
+    display: flex;
+    gap: 8px;
+  }
+
+  .size-option {
+    flex: 1;
+    padding: 10px 0;
+    text-align: center;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 13px;
+    color: #4a5568;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: all 0.2s ease;
+  }
+
+  .size-option.active {
+    border-color: #667eea;
+    color: #667eea;
+    background: #f0f3ff;
+  }
+
+  /* ========== 底部导航栏（简洁迷你版） ========== */
+  .bottom-nav-wrapper {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    padding: 0 24px calc(10px + env(safe-area-inset-bottom, 0px));
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+  }
+
+  .bottom-nav {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    width: 100%;
+    max-width: 320px;
+    height: 48px;
+    padding: 0 8px;
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-radius: 24px;
+    box-shadow: 
+      0 6px 24px rgba(26, 41, 128, 0.1),
+      0 2px 6px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    position: relative;
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    position: relative;
+    z-index: 2;
+    transition: transform 0.2s ease;
+  }
+
+  .nav-item:active {
+    transform: scale(0.9);
+  }
+
+  .nav-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    transition: all 0.25s ease;
+  }
+
+  .nav-icon svg {
+    width: 100%;
+    height: 100%;
+    stroke: #9aa3b2;
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: all 0.25s ease;
+  }
+
+  .nav-label {
+    font-size: 10px;
+    color: #9aa3b2;
+    transition: all 0.25s ease;
+    font-weight: 400;
+    letter-spacing: 0.2px;
+    line-height: 1;
+  }
+
+  /* 选中态 */
+  .nav-item.active .nav-icon svg {
+    stroke: #667eea;
+    stroke-width: 2;
+  }
+
+  .nav-item.active .nav-label {
+    color: #667eea;
+    font-weight: 600;
+  }
+
+  /* 选中小圆点 */
+  .nav-item.active::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #8e2de2);
+  }
+
+</style>
+</head>
+<body class="font-md">
+
+<div class="phone-container">
+
+  <!-- 闪屏页 -->
+  <div class="splash-screen" id="splashScreen">
+    <div class="splash-bg"></div>
+    <div class="splash-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 7L9 18l-5-5"/>
+        <path d="M14 7h6v6"/>
+      </svg>
+    </div>
+    <div class="splash-title">派个单</div>
+    <div class="splash-subtitle">个人对个人 · P2P 接单任务</div>
+    <div class="splash-desc">派友的专属服务内容订单</div>
+    <div class="splash-tag">PEOPLE TO PEOPLE</div>
+  </div>
+
+  <!-- 主页面 -->
+  <div class="main-page" id="mainPage">
+    <div class="status-bar"></div>
+
+    <div class="content-area">
+
+      <!-- 首页 -->
+      <div class="page-content active" id="page-home">
+        <!-- 顶部Banner -->
+        <div class="home-banner">
+          <div class="banner-content">
+            <div class="banner-title">派币接单</div>
+            <div class="banner-sub">P2P · 订单服务平台</div>
+            <div class="banner-tag">个人对个人 · 快捷接单</div>
+          </div>
+          <div class="banner-decoration">
+            <div class="banner-circle c1"></div>
+            <div class="banner-circle c2"></div>
+            <div class="banner-coin">₱</div>
+          </div>
+        </div>
+
+        <!-- 滚动字幕 -->
+        <div class="scroll-notice">
+          <div class="notice-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            </svg>
+          </div>
+          <div class="notice-scroll">
+            <div class="notice-text" id="noticeText">
+              新人可享受任务接单 · 派币所有任务及服务 · 在此接单也可发布需求 · 让所有派友为您服务 · 支持 USDT 结算 · 支持派币本币结算 · 支持派币存储与流通 ·
+            </div>
+          </div>
+        </div>
+
+        <!-- 两个大按钮 -->
+        <div class="home-btns">
+          <div class="home-btn accept" id="homeAcceptBtn">
+            <div class="home-btn-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 11l3 3L22 4"/>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+              </svg>
+            </div>
+            <div class="home-btn-text">
+              <div class="home-btn-title">任务接单</div>
+              <div class="home-btn-sub">接受任务赚派币</div>
+            </div>
+          </div>
+          <div class="home-btn publish" id="homePublishBtn">
+            <div class="home-btn-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+                <path d="M2 2l7.586 7.586"/>
+                <circle cx="11" cy="11" r="2"/>
+              </svg>
+            </div>
+            <div class="home-btn-text">
+              <div class="home-btn-title">任务发布</div>
+              <div class="home-btn-sub">发布需求找人做</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 订单列表 -->
+        <div class="order-list">
+          <div class="order-list-title">
+            <span>最新动态</span>
+            <span class="order-more">更多 ›</span>
+          </div>
+
+          <div class="order-item income">
+            <div class="order-avatar li">李</div>
+            <div class="order-info">
+              <div class="order-name">李先生</div>
+              <div class="order-desc">完成派币充值操作</div>
+            </div>
+            <div class="order-right">
+              <div class="order-amount">+ 128.00 PI</div>
+              <div class="order-time">10:23</div>
+            </div>
+          </div>
+
+          <div class="order-item income">
+            <div class="order-avatar zhang">张</div>
+            <div class="order-info">
+              <div class="order-name">张女士</div>
+              <div class="order-desc">新用户下载注册成功</div>
+            </div>
+            <div class="order-right">
+              <div class="order-amount">+ 50.00 PI</div>
+              <div class="order-time">10:15</div>
+            </div>
+          </div>
+
+          <div class="order-item expense">
+            <div class="order-avatar wang">王</div>
+            <div class="order-info">
+              <div class="order-name">王先生</div>
+              <div class="order-desc">发布代练任务订单</div>
+            </div>
+            <div class="order-right">
+              <div class="order-amount">- 200.00 PI</div>
+              <div class="order-time">09:58</div>
+            </div>
+          </div>
+
+          <div class="order-item income">
+            <div class="order-avatar liu">刘</div>
+            <div class="order-info">
+              <div class="order-name">刘女士</div>
+              <div class="order-desc">完成陪玩接单任务</div>
+            </div>
+            <div class="order-right">
+              <div class="order-amount">+ 88.00 PI</div>
+              <div class="order-time">09:42</div>
+            </div>
+          </div>
+
+          <div class="order-item expense">
+            <div class="order-avatar zhao">赵</div>
+            <div class="order-info">
+              <div class="order-name">赵先生</div>
+              <div class="order-desc">派币提现到账</div>
+            </div>
+            <div class="order-right">
+              <div class="order-amount">- 50.00 USDT</div>
+              <div class="order-time">09:30</div>
+            </div>
+          </div>
+
+          <div class="order-item income">
+            <div class="order-avatar chen">陈</div>
+            <div class="order-info">
+              <div class="order-name">陈女士</div>
+              <div class="order-desc">推荐好友获得奖励</div>
+            </div>
+            <div class="order-right">
+              <div class="order-amount">+ 38.88 PI</div>
+              <div class="order-time">09:12</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 市场 -->
+      <div class="page-content" id="page-market">
+        <!-- 顶部Banner -->
+        <div class="market-banner">
+          <div class="market-banner-content">
+            <div class="market-banner-title">派友接单市场</div>
+            <div class="market-banner-sub">每个人都有自己认定的派币任务</div>
+          </div>
+          <div class="market-banner-deco">
+            <div class="market-coin m1">₱</div>
+            <div class="market-coin m2">₱</div>
+            <div class="market-coin m3">₱</div>
+          </div>
+        </div>
+
+        <!-- 卡片网格 -->
+        <div class="market-grid">
+          <!-- 行1 -->
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.06 10:30</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">李先生</span>
+                <span class="card-reward">50 PI</span>
+              </div>
+              <div class="card-bottom">派币基础操作指导 · 钱包注册</div>
+            </div>
+          </div>
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.06 10:15</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">张女士</span>
+                <span class="card-reward">100 PI</span>
+              </div>
+              <div class="card-bottom">代练王者荣耀上分 · 钻石到星耀</div>
+            </div>
+          </div>
+
+          <!-- 行2 -->
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.06 09:58</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">王先生</span>
+                <span class="card-reward">30 USDT</span>
+              </div>
+              <div class="card-bottom">软件安装调试 · 远程协助</div>
+            </div>
+          </div>
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.06 09:45</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">刘女士</span>
+                <span class="card-reward">80 PI</span>
+              </div>
+              <div class="card-bottom">找人陪打麻将 · 一小时</div>
+            </div>
+          </div>
+
+          <!-- 行3 -->
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.06 09:30</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">赵先生</span>
+                <span class="card-reward">150 PI</span>
+              </div>
+              <div class="card-bottom">网页设计与制作 · 单页</div>
+            </div>
+          </div>
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.06 09:12</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">陈女士</span>
+                <span class="card-reward">20 USDT</span>
+              </div>
+              <div class="card-bottom">帮忙翻译英文资料 · 500字</div>
+            </div>
+          </div>
+
+          <!-- 行4 -->
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.06 08:55</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">孙先生</span>
+                <span class="card-reward">60 PI</span>
+              </div>
+              <div class="card-bottom">游戏账号代注册 · 多款</div>
+            </div>
+          </div>
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.06 08:40</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">周女士</span>
+                <span class="card-reward">200 PI</span>
+              </div>
+              <div class="card-bottom">PS修图 · 10张照片精修</div>
+            </div>
+          </div>
+
+          <!-- 行5 -->
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.06 08:20</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">吴先生</span>
+                <span class="card-reward">45 PI</span>
+              </div>
+              <div class="card-bottom">派币钱包使用教学 · 一对一</div>
+            </div>
+          </div>
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.05 22:30</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">郑女士</span>
+                <span class="card-reward">120 PI</span>
+              </div>
+              <div class="card-bottom">视频剪辑制作 · 短视频</div>
+            </div>
+          </div>
+
+          <!-- 行6 -->
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.05 21:15</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">冯先生</span>
+                <span class="card-reward">25 USDT</span>
+              </div>
+              <div class="card-bottom">小程序开发咨询 · 一小时</div>
+            </div>
+          </div>
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.05 20:00</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">何女士</span>
+                <span class="card-reward">70 PI</span>
+              </div>
+              <div class="card-bottom">找人一起玩和平精英 · 两局</div>
+            </div>
+          </div>
+
+          <!-- 行7 -->
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.05 19:30</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">韩先生</span>
+                <span class="card-reward">90 PI</span>
+              </div>
+              <div class="card-bottom">LOGO设计服务 · 三款方案</div>
+            </div>
+          </div>
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.05 18:45</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">杨女士</span>
+                <span class="card-reward">55 PI</span>
+              </div>
+              <div class="card-bottom">代做PPT演示文稿 · 20页</div>
+            </div>
+          </div>
+
+          <!-- 行8 -->
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.05 17:20</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">朱先生</span>
+                <span class="card-reward">40 PI</span>
+              </div>
+              <div class="card-bottom">派币账号找回 · 密码重置</div>
+            </div>
+          </div>
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.05 16:00</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">秦女士</span>
+                <span class="card-reward">180 PI</span>
+              </div>
+              <div class="card-bottom">网站建设与维护 · 企业站</div>
+            </div>
+          </div>
+
+          <!-- 行9 -->
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.05 15:10</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">许先生</span>
+                <span class="card-reward">15 USDT</span>
+              </div>
+              <div class="card-bottom">英语陪练对话 · 半小时</div>
+            </div>
+          </div>
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.05 14:25</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">尤女士</span>
+                <span class="card-reward">65 PI</span>
+              </div>
+              <div class="card-bottom">代写文章文案 · 1000字</div>
+            </div>
+          </div>
+
+          <!-- 行10 -->
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.05 13:00</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">何先生</span>
+                <span class="card-reward">75 PI</span>
+              </div>
+              <div class="card-bottom">电脑系统重装 · 含软件配置</div>
+            </div>
+          </div>
+          <div class="market-card accept">
+            <div class="card-left">接单</div>
+            <div class="card-right">
+              <div class="card-top">
+                <span class="card-time">2026.10.05 11:30</span>
+              </div>
+              <div class="card-middle">
+                <span class="card-name">吕女士</span>
+                <span class="card-reward">35 PI</span>
+              </div>
+              <div class="card-bottom">帮忙下载注册软件 · 远程</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 任务 -->
+      <div class="page-content" id="page-task">
+        <!-- 顶部标题 -->
+        <div class="task-header">
+          <div class="task-title">任务大厅</div>
+          <div class="task-sub">我的接单与任务管理</div>
+        </div>
+
+        <!-- Tab切换 -->
+        <div class="task-tabs">
+          <div class="task-tab active" data-tab="ongoing">进行中</div>
+          <div class="task-tab" data-tab="settled">已结算</div>
+          <div class="task-tab" data-tab="processing">处理中</div>
+          <div class="task-tab-indicator" id="taskTabIndicator"></div>
+        </div>
+
+        <!-- 进行中 -->
+        <div class="task-panel active" id="tab-ongoing">
+          <div class="task-card ongoing">
+            <div class="task-card-header">
+              <span class="task-status ongoing">已接单</span>
+              <span class="task-time">2026.10.06 10:30</span>
+            </div>
+            <div class="task-card-body">
+              <div class="task-info-row">
+                <span class="task-name">李先生</span>
+                <span class="task-amount">80 PI</span>
+              </div>
+              <div class="task-desc">派币钱包注册指导 · 一对一远程教学</div>
+            </div>
+            <div class="task-card-footer">
+              <span class="task-order-no">订单号：TD20261006001</span>
+            </div>
+          </div>
+
+          <div class="task-card ongoing">
+            <div class="task-card-header">
+              <span class="task-status ongoing">已接单</span>
+              <span class="task-time">2026.10.06 09:45</span>
+            </div>
+            <div class="task-card-body">
+              <div class="task-info-row">
+                <span class="task-name">王女士</span>
+                <span class="task-amount">120 PI</span>
+              </div>
+              <div class="task-desc">PS修图服务 · 5张照片精修</div>
+            </div>
+            <div class="task-card-footer">
+              <span class="task-order-no">订单号：TD20261006002</span>
+            </div>
+          </div>
+
+          <div class="task-card ongoing">
+            <div class="task-card-header">
+              <span class="task-status ongoing">已接单</span>
+              <span class="task-time">2026.10.06 09:00</span>
+            </div>
+            <div class="task-card-body">
+              <div class="task-info-row">
+                <span class="task-name">张先生</span>
+                <span class="task-amount">50 USDT</span>
+              </div>
+              <div class="task-desc">小程序开发咨询 · 两小时方案讨论</div>
+            </div>
+            <div class="task-card-footer">
+              <span class="task-order-no">订单号：TD20261006003</span>
+            </div>
+          </div>
+
+          <div class="task-card ongoing">
+            <div class="task-card-header">
+              <span class="task-status ongoing">已接单</span>
+              <span class="task-time">2026.10.05 22:10</span>
+            </div>
+            <div class="task-card-body">
+              <div class="task-info-row">
+                <span class="task-name">刘女士</span>
+                <span class="task-amount">60 PI</span>
+              </div>
+              <div class="task-desc">陪打麻将 · 三局娱乐</div>
+            </div>
+            <div class="task-card-footer">
+              <span class="task-order-no">订单号：TD20261005008</span>
+            </div>
+          </div>
+
+          <div class="task-card ongoing">
+            <div class="task-card-header">
+              <span class="task-status ongoing">已接单</span>
+              <span class="task-time">2026.10.05 20:30</span>
+            </div>
+            <div class="task-card-body">
+              <div class="task-info-row">
+                <span class="task-name">陈先生</span>
+                <span class="task-amount">150 PI</span>
+              </div>
+              <div class="task-desc">视频剪辑制作 · 30秒短视频</div>
+            </div>
+            <div class="task-card-footer">
+              <span class="task-order-no">订单号：TD20261005006</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 已结算 -->
+        <div class="task-panel" id="tab-settled">
+          <div class="task-card settled">
+            <div class="task-card-header">
+              <span class="task-status settled">✓ 已结算</span>
+              <span class="task-time">2026.10.05 18:00</span>
+            </div>
+            <div class="task-card-body">
+              <div class="task-info-row">
+                <span class="task-name">赵女士</span>
+                <span class="task-amount green">+ 100 PI</span>
+              </div>
+              <div class="task-desc">代练王者荣耀 · 钻石到星耀</div>
+            </div>
+            <div class="task-card-footer">
+              <span class="task-settle-time">结算时间：2026.10.05 18:00</span>
+            </div>
+          </div>
+
+          <div class="task-card settled">
+            <div class="task-card-header">
+              <span class="task-status settled">✓ 已结算</span>
+              <span class="task-time">2026.10.05 15:30</span>
+            </div>
+            <div class="task-card-body">
+              <div class="task-info-row">
+                <span class="task-name">孙先生</span>
+                <span class="task-amount green">+ 35 USDT</span>
+              </div>
+              <div class="task-desc">软件安装调试 · 电脑全套配置</div>
+            </div>
+            <div class="task-card-footer">
+              <span class="task-settle-time">结算时间：2026.10.05 15:30</span>
+            </div>
+          </div>
+
+          <div class="task-card settled">
+            <div class="task-card-header">
+              <span class="task-status settled">✓ 已结算</span>
+              <span class="task-time">2026.10.05 12:00</span>
+            </div>
+            <div class="task-card-body">
+              <div class="task-info-row">
+                <span class="task-name">周女士</span>
+                <span class="task-amount green">+ 45 PI</span>
+              </div>
+              <div class="task-desc">英语陪练 · 半小时对话</div>
+            </div>
+            <div class="task-card-footer">
+              <span class="task-settle-time">结算时间：2026.10.05 12:00</span>
+            </div>
+          </div>
+
+          <div class="task-card settled">
+            <div class="task-card-header">
+              <span class="task-status settled">✓ 已结算</span>
+              <span class="task-time">2026.10.04 21:00</span>
+            </div>
+            <div class="task-card-body">
+              <div class="task-info-row">
+                <span class="task-name">吴先生</span>
+                <span class="task-amount green">+ 200 PI</span>
+              </div>
+              <div class="task-desc">网站设计 · 单页落地页</div>
+            </div>
+            <div class="task-card-footer">
+              <span class="task-settle-time">结算时间：2026.10.04 21:00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 处理中 -->
+        <div class="task-panel" id="tab-processing">
+          <div class="task-card dispute">
+            <div class="task-card-header">
+              <span class="task-status dispute">异常处理</span>
+              <span class="task-time">2026.10.06 08:15</span>
+            </div>
+            <div class="task-card-body">
+              <div class="task-info-row">
+                <span class="task-name">郑先生</span>
+                <span class="task-amount red">90 PI</span>
+              </div>
+              <div class="task-desc">双方有争议 · 服务内容未达成一致</div>
+            </div>
+            <div class="task-card-footer">
+              <span class="task-dispute-tip">尚未结算 · 客服处理中</span>
+            </div>
+          </div>
+
+          <div class="task-card dispute">
+            <div class="task-card-header">
+              <span class="task-status dispute">异常处理</span>
+              <span class="task-time">2026.10.05 19:40</span>
+            </div>
+            <div class="task-card-body">
+              <div class="task-info-row">
+                <span class="task-name">冯女士</span>
+                <span class="task-amount red">60 PI</span>
+              </div>
+              <div class="task-desc">双方有争议 · 交付时间延迟</div>
+            </div>
+            <div class="task-card-footer">
+              <span class="task-dispute-tip">尚未结算 · 客服处理中</span>
+            </div>
+          </div>
+
+          <div class="task-card dispute">
+            <div class="task-card-header">
+              <span class="task-status dispute">异常处理</span>
+              <span class="task-time">2026.10.05 14:20</span>
+            </div>
+            <div class="task-card-body">
+              <div class="task-info-row">
+                <span class="task-name">韩先生</span>
+                <span class="task-amount red">25 USDT</span>
+              </div>
+              <div class="task-desc">双方有争议 · 质量不符合预期</div>
+            </div>
+            <div class="task-card-footer">
+              <span class="task-dispute-tip">尚未结算 · 客服处理中</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 我的 -->
+      <div class="page-content" id="page-mine">
+        <div class="mine-page">
+          <!-- 顶部渐变头部 -->
+          <div class="mine-header">
+            <div class="user-info">
+              <div class="avatar">
+                <svg viewBox="0 0 24 24">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+              <div class="user-detail">
+                <div class="user-name">派个单个人账号</div>
+              </div>
+              <div class="setting-btn" id="profileSettingBtn">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- 资产卡片 -->
+          <div class="asset-card">
+            <div class="asset-display">
+              <div class="asset-coin-row">
+                <div class="coin-icon">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                  </svg>
+                </div>
+                <span class="coin-amount">1.00</span>
+                <span class="coin-unit">枚</span>
+              </div>
+              <div class="asset-divider"></div>
+              <div class="asset-cny-row">
+                <span class="cny-label">约合</span>
+                <span class="cny-amount">¥0.60</span>
+                <span class="cny-unit">人民币</span>
+              </div>
+            </div>
+
+            <div class="action-buttons">
+              <div class="action-btn btn-recharge">
+                <div class="action-btn-icon">
+                  <svg viewBox="0 0 24 24">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                </div>
+                <span class="action-btn-label">充值</span>
+              </div>
+
+              <div class="action-btn btn-withdraw">
+                <div class="action-btn-icon">
+                  <svg viewBox="0 0 24 24">
+                    <polyline points="7 13 12 18 17 13"/>
+                    <polyline points="7 6 12 11 17 6"/>
+                  </svg>
+                </div>
+                <span class="action-btn-label">提现</span>
+              </div>
+
+              <div class="action-btn btn-transfer">
+                <div class="action-btn-icon">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M17 1l4 4-4 4"/>
+                    <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                    <path d="M7 23l-4-4 4-4"/>
+                    <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                  </svg>
+                </div>
+                <span class="action-btn-label">划转</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 菜单列表 -->
+          <div class="menu-section">
+            <div class="menu-item menu-dividend" data-open="dividend">
+              <div class="menu-icon">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+              </div>
+              <span class="menu-text">派币分红</span>
+              <div class="menu-arrow">
+                <svg viewBox="0 0 24 24">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </div>
+            </div>
+
+            <div class="menu-item menu-game" data-open="settings">
+              <div class="menu-icon">
+                <svg viewBox="0 0 24 24">
+                  <rect x="2" y="6" width="20" height="12" rx="2"/>
+                  <line x1="6" y1="12" x2="10" y2="12"/>
+                  <line x1="8" y1="10" x2="8" y2="14"/>
+                  <circle cx="16" cy="11" r="1"/>
+                  <circle cx="18" cy="13" r="1"/>
+                </svg>
+              </div>
+              <span class="menu-text">游戏设置</span>
+              <div class="menu-arrow">
+                <svg viewBox="0 0 24 24">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </div>
+            </div>
+
+            <div class="menu-item menu-desc" data-open="guide">
+              <div class="menu-icon">
+                <svg viewBox="0 0 24 24">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+              </div>
+              <span class="menu-text">游戏说明</span>
+              <div class="menu-arrow">
+                <svg viewBox="0 0 24 24">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </div>
+            </div>
+
+            <div class="menu-item menu-about" data-open="about">
+              <div class="menu-icon">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+              </div>
+              <span class="menu-text">关于我们</span>
+              <div class="menu-arrow">
+                <svg viewBox="0 0 24 24">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 底部高级导航栏 -->
+    <div class="bottom-nav-wrapper">
+      <nav class="bottom-nav" id="bottomNav">
+        <div class="nav-item active" data-page="home">
+          <div class="nav-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <span class="nav-label">首页</span>
+        </div>
+
+        <div class="nav-item" data-page="market">
+          <div class="nav-icon">
+            <svg viewBox="0 0 24 24">
+              <circle cx="9" cy="21" r="1"/>
+              <circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+          </div>
+          <span class="nav-label">市场</span>
+        </div>
+
+        <div class="nav-item" data-page="task">
+          <div class="nav-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M9 11l3 3L22 4"/>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+          </div>
+          <span class="nav-label">任务</span>
+        </div>
+
+        <div class="nav-item" data-page="mine">
+          <div class="nav-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <span class="nav-label">我的</span>
+        </div>
+      </nav>
+    </div>
+  </div>
+
+  <!-- 关于我们弹层 -->
+  <div class="modal-overlay" id="aboutModal">
+    <div class="modal-page">
+      <div class="modal-header">
+        <div class="modal-close" data-close="about">
+          <svg viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </div>
+        <div class="modal-title">关于我们</div>
+        <div class="modal-placeholder"></div>
+      </div>
+      <div class="modal-body">
+        <div class="about-hero">
+          <div class="about-logo">
+            <svg viewBox="0 0 24 24">
+              <path d="M20 7L9 18l-5-5"/>
+              <path d="M14 7h6v6"/>
+            </svg>
+          </div>
+          <h2>山西太原派社区</h2>
+          <p>SHANXI TAIYUANPAI COMMUNITY</p>
+        </div>
+
+        <div class="about-section">
+          <h3>社区简介</h3>
+          <p>山西太原派社区是一个专注于个人对个人（P2P）服务对接的创新型社区平台。我们致力于为广大派友提供便捷、可靠的接单与派单服务，让每一位用户都能在平台上找到适合自己的任务与机会，实现价值共享、互利共赢。</p>
+        </div>
+
+        <div class="about-section">
+          <h3>平台定位</h3>
+          <p>派个单是社区旗下核心产品，专为牌友打造的兼职接单平台。无论是处理日常问题、提供专业服务，还是参与游戏互动，都能通过派个单快速匹配需求方与服务方，让每一份付出都有回报，让每一个需求都能被满足。</p>
+        </div>
+
+        <div class="about-section">
+          <h3>核心股东</h3>
+          <div class="shareholder-list">
+            <div class="shareholder-item">
+              <div class="shareholder-avatar" style="background: linear-gradient(135deg, #667eea, #764ba2);">张</div>
+              <div class="shareholder-info">
+                <div class="shareholder-name">张明远</div>
+                <div class="shareholder-role">创始人 / 董事长</div>
+              </div>
+            </div>
+            <div class="shareholder-item">
+              <div class="shareholder-avatar" style="background: linear-gradient(135deg, #f093fb, #f5576c);">李</div>
+              <div class="shareholder-info">
+                <div class="shareholder-name">李雪晴</div>
+                <div class="shareholder-role">联合创始人 / CEO</div>
+              </div>
+            </div>
+            <div class="shareholder-item">
+              <div class="shareholder-avatar" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">王</div>
+              <div class="shareholder-info">
+                <div class="shareholder-name">王浩然</div>
+                <div class="shareholder-role">技术合伙人 / CTO</div>
+              </div>
+            </div>
+            <div class="shareholder-item">
+              <div class="shareholder-avatar" style="background: linear-gradient(135deg, #fa709a, #fee140);">陈</div>
+              <div class="shareholder-info">
+                <div class="shareholder-name">陈思雨</div>
+                <div class="shareholder-role">运营合伙人 / COO</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="about-section">
+          <h3>旗下游戏</h3>
+          <div class="game-tags">
+            <span class="game-tag">斗地主</span>
+            <span class="game-tag">麻将</span>
+            <span class="game-tag">跑得快</span>
+            <span class="game-tag">牛牛</span>
+            <span class="game-tag">炸金花</span>
+            <span class="game-tag">五子棋</span>
+            <span class="game-tag">象棋</span>
+            <span class="game-tag">消消乐</span>
+          </div>
+        </div>
+
+        <div class="about-footer">
+          山西太原派社区 © 2024
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 游戏设置弹层 -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-page">
+      <div class="modal-header">
+        <div class="modal-close" data-close="settings">
+          <svg viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </div>
+        <div class="modal-title">游戏设置</div>
+        <div class="modal-placeholder"></div>
+      </div>
+      <div class="modal-body">
+        <div class="setting-group">
+          <div class="setting-group-title">显示</div>
+          <div class="setting-row" id="sizeToggle">
+            <div class="setting-icon size">
+              <svg viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <path d="M9 9h6v6H9z"/>
+              </svg>
+            </div>
+            <span class="setting-label">游戏大小</span>
+            <span class="setting-value" id="sizeValue">中</span>
+            <div class="setting-arrow">
+              <svg viewBox="0 0 24 24">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </div>
+          </div>
+          <div class="size-selector" id="sizeSelector">
+            <div class="size-options">
+              <div class="size-option" data-size="小">小</div>
+              <div class="size-option active" data-size="中">中</div>
+              <div class="size-option" data-size="大">大</div>
+              <div class="size-option" data-size="超大">超大</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-group-title">音效</div>
+          <div class="setting-row">
+            <div class="setting-icon mute">
+              <svg viewBox="0 0 24 24">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                <line x1="23" y1="9" x2="17" y2="15"/>
+                <line x1="17" y1="9" x2="23" y2="15"/>
+              </svg>
+            </div>
+            <span class="setting-label">游戏静音</span>
+            <label class="switch">
+              <input type="checkbox" id="muteSwitch">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-icon sound">
+              <svg viewBox="0 0 24 24">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+              </svg>
+            </div>
+            <span class="setting-label">按钮声音</span>
+            <label class="switch">
+              <input type="checkbox" id="soundSwitch" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <div class="setting-group-title">触感</div>
+          <div class="setting-row">
+            <div class="setting-icon vibrate">
+              <svg viewBox="0 0 24 24">
+                <rect x="8" y="2" width="8" height="20" rx="2"/>
+                <line x1="4" y1="8" x2="4" y2="16"/>
+                <line x1="20" y1="8" x2="20" y2="16"/>
+              </svg>
+            </div>
+            <span class="setting-label">游戏震动</span>
+            <label class="switch">
+              <input type="checkbox" id="vibrateSwitch" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 接单详情弹层 -->
+<div class="modal-overlay order-overlay" id="orderModal">
+  <div class="modal-page">
+    <div class="modal-header">
+      <div class="modal-close" id="orderCloseBtn">
+        <svg viewBox="0 0 24 24">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </div>
+      <div class="modal-title">接单详情</div>
+      <div class="modal-placeholder"></div>
+    </div>
+    <div class="order-detail">
+      <div class="order-detail-section">
+        <div class="order-detail-label">接单时间</div>
+        <div class="order-detail-value" id="orderTime">2026.10.06 10:30</div>
+      </div>
+      <div class="order-detail-divider"></div>
+      <div class="order-detail-section">
+        <div class="order-detail-label">委托人</div>
+        <div class="order-detail-value" id="orderName">李先生</div>
+      </div>
+      <div class="order-detail-divider"></div>
+      <div class="order-detail-section">
+        <div class="order-detail-label">报酬</div>
+        <div class="order-detail-value amount" id="orderAmount">50 PI</div>
+      </div>
+      <div class="order-detail-divider"></div>
+      <div class="order-detail-section">
+        <div class="order-detail-label">任务内容</div>
+        <div class="order-detail-desc" id="orderDesc">派币基础操作指导 · 钱包注册</div>
+      </div>
+    </div>
+    <div class="order-actions">
+      <button class="order-btn confirm" id="orderConfirmBtn">确认接单</button>
+      <button class="order-btn cancel" id="orderCancelBtn">取消接单</button>
+    </div>
+  </div>
+</div>
+
+<!-- 任务发布弹层 -->
+<div class="modal-overlay publish-overlay" id="publishModal">
+  <div class="modal-page">
+    <div class="modal-header">
+      <div class="modal-close" id="publishCloseBtn">
+        <svg viewBox="0 0 24 24">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </div>
+      <div class="modal-title">任务发布</div>
+      <div class="modal-placeholder"></div>
+    </div>
+    <div class="publish-form">
+      <div class="form-group">
+        <div class="form-label"><span class="num">1</span>姓名</div>
+        <input class="form-input" type="text" id="publishName" placeholder="请输入您的姓名">
+      </div>
+      <div class="form-group">
+        <div class="form-label"><span class="num">2</span>服务内容</div>
+        <textarea class="form-textarea" id="publishService" placeholder="请描述您需要的服务内容"></textarea>
+      </div>
+      <div class="form-group">
+        <div class="form-label"><span class="num">3</span>发布时间</div>
+        <input class="form-time" type="datetime-local" id="publishTime" value="2026-10-09T14:00">
+      </div>
+      <div class="form-group">
+        <div class="form-label"><span class="num">4</span>悬赏金额</div>
+        <div class="currency-select">
+          <div class="currency-option active" data-currency="PI">派币 PI</div>
+          <div class="currency-option" data-currency="USDT">USDT</div>
+        </div>
+        <input class="form-input" type="number" id="publishAmount" placeholder="请输入悬赏金额数量">
+      </div>
+      <div class="form-group">
+        <div class="form-label"><span class="num">5</span>备注</div>
+        <textarea class="form-textarea" id="publishRemark" placeholder="补充说明（选填）"></textarea>
+      </div>
+    </div>
+    <div class="publish-actions">
+      <button class="publish-btn cancel" id="publishCancelBtn">取消发布</button>
+      <button class="publish-btn confirm" id="publishConfirmBtn">确认发布</button>
+    </div>
+  </div>
+</div>
+
+<!-- 任务订单详情弹层 -->
+<div class="modal-overlay task-detail-overlay purple" id="taskDetailModal">
+  <div class="modal-page">
+    <div class="detail-header">
+      <div class="detail-header-title" id="detailTitle">进行中的订单</div>
+      <div class="detail-header-sub" id="detailSub">订单详情与进度跟踪</div>
+      <div class="modal-close" id="detailCloseBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- 订单详情视图 -->
+    <div class="detail-body" id="detailViewInfo">
+      <!-- 状态卡片 -->
+      <div class="detail-status-card">
+        <div class="detail-status-icon" id="detailStatusIcon">
+          <svg viewBox="0 0 24 24" id="detailStatusSvg">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div class="detail-status-text">
+          <div class="detail-status-title" id="detailStatusTitle">接单预计排队中</div>
+          <div class="detail-status-desc" id="detailStatusDesc">请耐心等待，正在为您安排</div>
+        </div>
+      </div>
+
+      <!-- 订单信息 -->
+      <div class="detail-section">
+        <div class="detail-section-title">订单信息</div>
+        <div class="detail-row">
+          <span class="detail-label">订单状态</span>
+          <span class="detail-value"><span class="detail-tag" id="detailStatusTag">已接单</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">接单时间</span>
+          <span class="detail-value" id="detailOrderTime">2026.10.06 10:30</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">订单号</span>
+          <span class="detail-value" id="detailOrderNo">TD2026000101</span>
+        </div>
+      </div>
+
+      <!-- 任务内容 -->
+      <div class="detail-section">
+        <div class="detail-section-title">任务内容</div>
+        <div class="detail-row">
+          <span class="detail-label">委托人</span>
+          <span class="detail-value" id="detailClientName">李先生</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">悬赏金额</span>
+          <span class="detail-value amount" id="detailAmount">50 PI</span>
+        </div>
+        <div class="detail-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+          <span class="detail-label">服务内容</span>
+          <div class="detail-desc-box" id="detailDesc">派币基础操作指导 · 钱包注册</div>
+        </div>
+      </div>
+
+      <!-- 接单信息 -->
+      <div class="detail-section">
+        <div class="detail-section-title">接单信息</div>
+        <div class="detail-row">
+          <span class="detail-label">接单账号</span>
+          <span class="detail-value" id="detailAccepterId">PY3829571</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">接单人</span>
+          <span class="detail-value" id="detailAccepterName">派个单个人账号</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 进度视图（进行中） -->
+    <div class="detail-body" id="detailViewProgress" style="display:none;">
+      <div class="progress-header">
+        <div class="progress-role">发布方视角</div>
+        <div class="progress-order-no" id="progressOrderNo">订单号：TD2026000101</div>
+      </div>
+
+      <div class="progress-steps">
+        <div class="progress-step active">
+          <div class="step-dot"></div>
+          <div class="step-line"></div>
+          <div class="step-content">
+            <div class="step-title">已发布</div>
+            <div class="step-desc">任务已发布到市场</div>
+            <div class="step-time">2026.10.06 10:00</div>
+          </div>
+        </div>
+        <div class="progress-step active">
+          <div class="step-dot"></div>
+          <div class="step-line"></div>
+          <div class="step-content">
+            <div class="step-title">接受单</div>
+            <div class="step-desc">已有派友接单</div>
+            <div class="step-time">2026.10.06 10:30</div>
+          </div>
+        </div>
+        <div class="progress-step active">
+          <div class="step-dot"></div>
+          <div class="step-line"></div>
+          <div class="step-content">
+            <div class="step-title">已接收</div>
+            <div class="step-desc">接单人已确认接收</div>
+            <div class="step-time">2026.10.06 10:35</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">当前状态</div>
+        <div class="status-pills">
+          <div class="status-pill">待处理</div>
+          <div class="status-pill active">正在处理</div>
+          <div class="status-pill">排队中</div>
+        </div>
+        <div class="progress-current-desc">
+          接单人正在处理您的任务，请耐心等待完成。预计还需 30 分钟。
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">任务内容</div>
+        <div class="detail-row">
+          <span class="detail-label">发布人</span>
+          <span class="detail-value" id="progressPublisher">李先生</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">悬赏金额</span>
+          <span class="detail-value amount" id="progressAmount">50 PI</span>
+        </div>
+        <div class="detail-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+          <span class="detail-label">服务内容</span>
+          <div class="detail-desc-box" id="progressDesc">派币基础操作指导 · 钱包注册</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 结算详情视图（已结算） -->
+    <div class="detail-body" id="detailViewSettled" style="display:none;">
+      <div class="settled-big-check">
+        <div class="settled-check-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        </div>
+        <div class="settled-title">✓ 订单已完成结算</div>
+        <div class="settled-sub">派币已存入接单方账户</div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">双方信息</div>
+        <div class="detail-row">
+          <span class="detail-label">发布人</span>
+          <span class="detail-value" id="settledPublisher">李先生</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">发布时间</span>
+          <span class="detail-value" id="settledPublishTime">2026.10.06 10:00</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">接单人</span>
+          <span class="detail-value" id="settledAccepter">派个单个人账号</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">接单时间</span>
+          <span class="detail-value" id="settledAcceptTime">2026.10.06 10:30</span>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">结算状态</div>
+        <div class="settled-row">
+          <div class="settled-dot ok"></div>
+          <div class="settled-text">
+            <div class="settled-row-title">已完成</div>
+            <div class="settled-row-desc">任务已完成，双方已确认</div>
+          </div>
+        </div>
+        <div class="settled-row">
+          <div class="settled-dot ok"></div>
+          <div class="settled-text">
+            <div class="settled-row-title">双方已同意</div>
+            <div class="settled-row-desc">发布方与接单方均无异议</div>
+          </div>
+        </div>
+        <div class="settled-row">
+          <div class="settled-dot ok"></div>
+          <div class="settled-text">
+            <div class="settled-row-title">派币已结算</div>
+            <div class="settled-row-desc">派币正在结算到接单方账户</div>
+          </div>
+        </div>
+        <div class="settled-amount">
+          <span class="settled-amount-label">结算金额</span>
+          <span class="settled-amount-value" id="settledAmount">50 PI</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 异常详情视图（处理中） -->
+    <div class="detail-body" id="detailViewDispute" style="display:none;">
+      <div class="dispute-warning">
+        <div class="dispute-warning-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <div class="dispute-title">订单异常处理中</div>
+        <div class="dispute-sub">客服正在介入，请耐心等待</div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">双方信息</div>
+        <div class="detail-row">
+          <span class="detail-label">发布方</span>
+          <span class="detail-value" id="disputePublisher">郑先生</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">处理方</span>
+          <span class="detail-value">平台客服 · 003号</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">申请时间</span>
+          <span class="detail-value" id="disputeTime">2026.10.06 08:15</span>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">异常原因</div>
+        <div class="dispute-reason-list">
+          <div class="dispute-reason-item">
+            <div class="dispute-reason-dot">1</div>
+            <div class="dispute-reason-text">发布方发布的内容不合理</div>
+          </div>
+          <div class="dispute-reason-item">
+            <div class="dispute-reason-dot">2</div>
+            <div class="dispute-reason-text">超时未完成（超过3天未处理）</div>
+          </div>
+          <div class="dispute-reason-item">
+            <div class="dispute-reason-dot">3</div>
+            <div class="dispute-reason-text">发布方不给奖励，拒绝结算</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">当前状态</div>
+        <div class="dispute-status-badge">
+          <span class="dispute-status-text">未完成 · 已取消</span>
+        </div>
+        <div class="dispute-current-desc">
+          订单已进入异常处理流程，客服正在核实双方举证。预计 24 小时内给出处理结果。
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">涉及金额</div>
+        <div class="dispute-amount">
+          <span class="dispute-amount-value" id="disputeAmount">90 PI</span>
+          <span class="dispute-amount-label">争议中，暂未结算</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-footer">
+      <button class="detail-btn secondary" id="detailSecondaryBtn">取消订单</button>
+      <button class="detail-btn primary" id="detailPrimaryBtn">查看进度</button>
+    </div>
+  </div>
+</div>
+
+<!-- 派币分红弹层 -->
+<div class="modal-overlay" id="dividendModal">
+  <div class="modal-page">
+    <div class="modal-header">
+      <div class="modal-close" data-close-dividend>
+        <svg viewBox="0 0 24 24">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </div>
+      <div class="modal-title">派币分红</div>
+      <div class="modal-placeholder"></div>
+    </div>
+    <div class="dividend-body">
+      <div class="dividend-total-card">
+        <div class="dividend-total-label">累计分红</div>
+        <div class="dividend-total-value">0.00 PI</div>
+        <div class="dividend-total-tip">每月1号发放上月分红</div>
+      </div>
+      <div class="dividend-list-title">分红记录</div>
+      <div class="dividend-list">
+        <div class="dividend-item">
+          <div class="dividend-date">2026年10月</div>
+          <div class="dividend-info">
+            <div class="dividend-month">10月分红（9月收益）</div>
+            <div class="dividend-time">2026.10.01 00:00 发放</div>
+          </div>
+          <div class="dividend-amount zero">0.00 PI</div>
+        </div>
+        <div class="dividend-item">
+          <div class="dividend-date">2026年9月</div>
+          <div class="dividend-info">
+            <div class="dividend-month">9月分红（8月收益）</div>
+            <div class="dividend-time">2026.09.01 00:00 发放</div>
+          </div>
+          <div class="dividend-amount zero">0.00 PI</div>
+        </div>
+        <div class="dividend-item">
+          <div class="dividend-date">2026年8月</div>
+          <div class="dividend-info">
+            <div class="dividend-month">8月分红（7月收益）</div>
+            <div class="dividend-time">2026.08.01 00:00 发放</div>
+          </div>
+          <div class="dividend-amount zero">0.00 PI</div>
+        </div>
+        <div class="dividend-item">
+          <div class="dividend-date">2026年7月</div>
+          <div class="dividend-info">
+            <div class="dividend-month">7月分红（6月收益）</div>
+            <div class="dividend-time">2026.07.01 00:00 发放</div>
+          </div>
+          <div class="dividend-amount zero">0.00 PI</div>
+        </div>
+        <div class="dividend-item">
+          <div class="dividend-date">2026年6月</div>
+          <div class="dividend-info">
+            <div class="dividend-month">6月分红（5月收益）</div>
+            <div class="dividend-time">2026.06.01 00:00 发放</div>
+          </div>
+          <div class="dividend-amount zero">0.00 PI</div>
+        </div>
+        <div class="dividend-item">
+          <div class="dividend-date">2026年5月</div>
+          <div class="dividend-info">
+            <div class="dividend-month">5月分红（4月收益）</div>
+            <div class="dividend-time">2026.05.01 00:00 发放</div>
+          </div>
+          <div class="dividend-amount zero">0.00 PI</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 游戏说明弹层 -->
+<div class="modal-overlay" id="guideModal">
+  <div class="modal-page">
+    <div class="modal-header">
+      <div class="modal-close" data-close-guide>
+        <svg viewBox="0 0 24 24">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </div>
+      <div class="modal-title">游戏说明</div>
+      <div class="modal-placeholder"></div>
+    </div>
+    <div class="guide-body">
+      <div class="guide-section">
+        <div class="guide-section-title">📌 平台简介</div>
+        <div class="guide-section-content">
+          派个单是一个派友接单的 P2P 服务平台，所有人都可以发布接单需求。无论是派币生态上的所有任务，还是其他区块链的所有任务，只要有需求都可以在此发布。
+        </div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-section-title">💰 结算方式</div>
+        <div class="guide-section-content">
+          平台发布与接单内容以<strong>派币（PI）</strong>为主，<strong>USDT</strong>为辅。接单完成后即可获得相应的派币或 USDT 奖励。
+        </div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-section-title">📝 接单与发布</div>
+        <div class="guide-section-content">
+          <p>• <strong>发布任务</strong>：任何人都可以发布自己的需求，设置悬赏金额，等待派友接单服务。</p>
+          <p>• <strong>接单兼职</strong>：开启接单后，可以获取每个兼职任务的详细信息，选择合适的任务接单赚取派币。</p>
+          <p>• <strong>任务范围</strong>：派币操作指导、区块链相关服务、游戏代练陪玩、设计开发、翻译文案、生活服务等各类兼职任务。</p>
+        </div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-section-title">🛡️ 安全保障</div>
+        <div class="guide-section-content">
+          <p>• 平台担保交易，任务完成双方确认后结算</p>
+          <p>• 如有争议可申请客服介入处理</p>
+          <p>• 超时未完成自动进入异常处理流程</p>
+        </div>
+      </div>
+
+      <div class="guide-section">
+        <div class="guide-section-title">💡 温馨提示</div>
+        <div class="guide-section-content">
+          请发布合法合规的任务内容，禁止发布违法违规、虚假欺诈等信息。平台保留最终解释权。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 充值弹层 -->
+<div class="modal-overlay" id="rechargeModal">
+  <div class="modal-page" style="height: auto; min-height: 55%;">
+    <div class="modal-header">
+      <div class="modal-close" data-close-recharge>
+        <svg viewBox="0 0 24 24">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </div>
+      <div class="modal-title">派币充值</div>
+      <div class="modal-placeholder"></div>
+    </div>
+    <div class="recharge-body">
+      <div class="recharge-card">
+        <div class="recharge-label">充值数量（PI）</div>
+        <input class="recharge-input" type="number" id="rechargeAmount" placeholder="请输入充值数量" min="0">
+      </div>
+
+      <div class="recharge-address-card">
+        <div class="recharge-address-label">9绿钱包收款地址</div>
+        <div class="recharge-address-row">
+          <div class="recharge-address-text" id="rechargeAddress">测试钱包，暂无充值</div>
+          <button class="recharge-copy-btn" id="rechargeCopyBtn">复制</button>
+        </div>
+        <div class="recharge-tip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          请将派币转入以上地址，转账成功后点击下方按钮
+        </div>
+      </div>
+    </div>
+    <div class="recharge-actions">
+      <button class="recharge-btn cancel" data-close-recharge>取消</button>
+      <button class="recharge-btn confirm" id="rechargeConfirmBtn">我已充值</button>
+    </div>
+  </div>
+</div>
+
+<!-- 提现弹层 -->
+<div class="modal-overlay" id="withdrawModal">
+  <div class="modal-page" style="height: auto; min-height: 55%;">
+    <div class="modal-header">
+      <div class="modal-close" data-close-withdraw>
+        <svg viewBox="0 0 24 24">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </div>
+      <div class="modal-title">派币提现</div>
+      <div class="modal-placeholder"></div>
+    </div>
+    <div class="withdraw-body">
+      <div class="withdraw-card">
+        <div class="withdraw-label">提现地址</div>
+        <input class="withdraw-input" type="text" id="withdrawAddress" placeholder="请粘贴或输入派币钱包地址">
+      </div>
+      <div class="withdraw-card">
+        <div class="withdraw-label">提现数量（PI）</div>
+        <input class="withdraw-input" type="number" id="withdrawAmount" placeholder="请输入提现数量" min="0">
+        <div class="withdraw-balance">可用余额：1.00 PI</div>
+      </div>
+      <div class="withdraw-tip">
+        提现将在 24 小时内到账，请确保地址正确无误
+      </div>
+    </div>
+    <div class="withdraw-actions">
+      <button class="withdraw-btn cancel" data-close-withdraw>取消提现</button>
+      <button class="withdraw-btn confirm" id="withdrawConfirmBtn">确认提现</button>
+    </div>
+  </div>
+</div>
+
+<!-- 划转弹层 -->
+<div class="modal-overlay" id="transferModal">
+  <div class="modal-page" style="height: auto; min-height: 55%;">
+    <div class="modal-header">
+      <div class="modal-close" data-close-transfer>
+        <svg viewBox="0 0 24 24">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </div>
+      <div class="modal-title">派币划转</div>
+      <div class="modal-placeholder"></div>
+    </div>
+    <div class="transfer-body">
+      <div class="transfer-card">
+        <div class="transfer-label">对方派币钱包地址</div>
+        <input class="transfer-input" type="text" id="transferAddress" placeholder="请粘贴对方派币钱包地址">
+      </div>
+      <div class="transfer-card">
+        <div class="transfer-label">划转数量（PI）</div>
+        <input class="transfer-input" type="number" id="transferAmount" placeholder="请输入划转数量" min="0">
+        <div class="transfer-balance">可用余额：1.00 PI</div>
+      </div>
+      <div class="transfer-tip">
+        划转即时到账，请确认对方地址正确
+      </div>
+    </div>
+    <div class="transfer-actions">
+      <button class="transfer-btn cancel" data-close-transfer>取消划转</button>
+      <button class="transfer-btn confirm" id="transferConfirmBtn">确认划转</button>
+    </div>
+  </div>
+</div>
+
+<!-- 划转二次确认弹层 -->
+<div class="modal-overlay" id="transferConfirmModal" style="align-items: center;">
+  <div class="modal-page" style="height: auto; width: 85%; max-width: 320px; border-radius: 18px;">
+    <div class="transfer-confirm-body">
+      <div class="transfer-confirm-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <div class="transfer-confirm-title">确认划转</div>
+      <div class="transfer-confirm-desc">请确认您的划转信息，划转成功后不可撤销</div>
+      <div class="transfer-confirm-info">
+        <div class="transfer-confirm-row">
+          <span>划转数量</span>
+          <span class="transfer-confirm-amount" id="tcAmount">0.00 PI</span>
+        </div>
+        <div class="transfer-confirm-row">
+          <span>收款地址</span>
+          <span class="transfer-confirm-address" id="tcAddress">-</span>
+        </div>
+      </div>
+    </div>
+    <div class="transfer-confirm-actions">
+      <button class="tc-btn cancel" id="tcCancelBtn">取消</button>
+      <button class="tc-btn confirm" id="tcOkBtn">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- 生态设置弹窗（正方形居中） -->
+<div class="modal-overlay" id="ecoSettingsModal" style="align-items: center; justify-content: center;">
+  <div class="eco-settings-box">
+    <div class="eco-settings-title">生态设置</div>
+
+    <!-- 背景色切换 -->
+    <div class="eco-settings-group">
+      <div class="eco-settings-label">背景颜色</div>
+      <div class="eco-color-row">
+        <div class="eco-color-dot active" data-bg="default" style="background: linear-gradient(135deg, #667eea, #8e2de2);" title="默认"></div>
+        <div class="eco-color-dot" data-bg="green" style="background: linear-gradient(135deg, #27ae60, #2ecc71);" title="绿色"></div>
+        <div class="eco-color-dot" data-bg="red" style="background: linear-gradient(135deg, #e74c3c, #c0392b);" title="红色"></div>
+        <div class="eco-color-dot" data-bg="yellow" style="background: linear-gradient(135deg, #f39c12, #f1c40f);" title="黄色"></div>
+        <div class="eco-color-dot" data-bg="white" style="background: #ffffff; border: 1px solid #ddd;" title="白色"></div>
+        <div class="eco-color-dot" data-bg="black" style="background: #1a1a1a;" title="黑色"></div>
+      </div>
+    </div>
+
+    <!-- 字体大小 -->
+    <div class="eco-settings-group">
+      <div class="eco-settings-label">字体大小</div>
+      <div class="eco-font-row">
+        <div class="eco-font-btn" data-font="xs">小号</div>
+        <div class="eco-font-btn" data-font="sm">较小</div>
+        <div class="eco-font-btn active" data-font="md">中号</div>
+        <div class="eco-font-btn" data-font="lg">大号</div>
+      </div>
+    </div>
+
+    <div class="eco-settings-actions">
+      <button class="eco-settings-close" id="ecoSettingsCloseBtn">完成</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 闪屏页控制 - 显示0.8秒后消失
+  const splashScreen = document.getElementById('splashScreen');
+  const mainPage = document.getElementById('mainPage');
+
+  setTimeout(() => {
+    splashScreen.classList.add('hide');
+    mainPage.classList.add('show');
+  }, 800);
+
+  // 底部导航切换
+  const navItems = document.querySelectorAll('.nav-item');
+  const pageContents = document.querySelectorAll('.page-content');
+
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      const targetPage = item.getAttribute('data-page');
+
+      // 切换导航激活状态
+      navItems.forEach(nav => nav.classList.remove('active'));
+      item.classList.add('active');
+
+      // 切换页面内容
+      pageContents.forEach(page => page.classList.remove('active'));
+      document.getElementById('page-' + targetPage).classList.add('active');
+    });
+  });
+
+  // 任务页Tab切换
+  const taskTabs = document.querySelectorAll('.task-tab');
+  const taskPanels = document.querySelectorAll('.task-panel');
+  const taskTabIndicator = document.getElementById('taskTabIndicator');
+
+  taskTabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => {
+      const targetTab = tab.getAttribute('data-tab');
+
+      // 切换Tab激活状态
+      taskTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      // 移动指示器 - 居中到文字下方
+      if (taskTabIndicator) {
+        var tabRect = tab.getBoundingClientRect();
+        var tabsRect = tab.parentElement.getBoundingClientRect();
+        var indicatorLeft = tabRect.left - tabsRect.left + tabRect.width / 2 - 18;
+        taskTabIndicator.style.left = indicatorLeft + 'px';
+      }
+
+      // 切换面板
+      taskPanels.forEach(panel => panel.classList.remove('active'));
+      document.getElementById('tab-' + targetTab).classList.add('active');
+    });
+  });
+
+  // 接单详情弹层
+  const orderModal = document.getElementById('orderModal');
+  const marketCards = document.querySelectorAll('.market-card');
+  var currentOrderData = null;
+  var currentOrderCard = null;
+
+  marketCards.forEach(card => {
+    card.addEventListener('click', () => {
+      var timeEl = card.querySelector('.card-time');
+      var nameEl = card.querySelector('.card-name');
+      var amountEl = card.querySelector('.card-reward');
+      var descEl = card.querySelector('.card-bottom');
+
+      var time = timeEl ? timeEl.textContent : '';
+      var name = nameEl ? nameEl.textContent : '';
+      var amount = amountEl ? amountEl.textContent : '';
+      var desc = descEl ? descEl.textContent : '';
+
+      currentOrderData = { time: time, name: name, amount: amount, desc: desc };
+      currentOrderCard = card;
+
+      document.getElementById('orderTime').textContent = time;
+      document.getElementById('orderName').textContent = name;
+      document.getElementById('orderAmount').textContent = amount;
+      document.getElementById('orderDesc').textContent = desc;
+
+      orderModal.classList.add('active');
+    });
+  });
+
+  // 关闭接单弹层
+  document.getElementById('orderCloseBtn').addEventListener('click', () => {
+    orderModal.classList.remove('active');
+  });
+
+  orderModal.addEventListener('click', (e) => {
+    if (e.target === orderModal) {
+      orderModal.classList.remove('active');
+    }
+  });
+
+  // 取消接单
+  document.getElementById('orderCancelBtn').addEventListener('click', () => {
+    orderModal.classList.remove('active');
+  });
+
+  // 确认接单 - 在任务页进行中列表添加新记录
+  var orderCounter = 100;
+  document.getElementById('orderConfirmBtn').addEventListener('click', () => {
+    if (currentOrderData) {
+      orderCounter++;
+      var ongoingPanel = document.getElementById('tab-ongoing');
+      var newCard = document.createElement('div');
+      newCard.className = 'task-card ongoing';
+      var orderNo = 'TD2026' + String(orderCounter).padStart(6, '0');
+      newCard.innerHTML =
+        '<div class="task-card-header">' +
+          '<span class="task-status ongoing">已接单</span>' +
+          '<span class="task-time">' + currentOrderData.time + '</span>' +
+        '</div>' +
+        '<div class="task-card-body">' +
+          '<div class="task-info-row">' +
+            '<span class="task-name">' + currentOrderData.name + '</span>' +
+            '<span class="task-amount">' + currentOrderData.amount + '</span>' +
+          '</div>' +
+          '<div class="task-desc">' + currentOrderData.desc + '</div>' +
+        '</div>' +
+        '<div class="task-card-footer">' +
+          '<span class="task-order-no">订单号：' + orderNo + '</span>' +
+        '</div>';
+      ongoingPanel.insertBefore(newCard, ongoingPanel.firstChild);
+      // 给新卡片绑定点击事件
+      newCard.onclick = function() { openTaskDetail('ongoing', newCard); };
+
+      // 从市场列表移除该卡片
+      if (currentOrderCard && currentOrderCard.parentNode) {
+        currentOrderCard.remove();
+        currentOrderCard = null;
+      }
+
+      // 切换到任务页进行中
+      navItems.forEach(nav => nav.classList.remove('active'));
+      var taskNav = document.querySelector('.nav-item[data-page="task"]');
+      if (taskNav) taskNav.classList.add('active');
+      pageContents.forEach(page => page.classList.remove('active'));
+      document.getElementById('page-task').classList.add('active');
+
+      // 切换到进行中Tab
+      taskTabs.forEach(t => t.classList.remove('active'));
+      taskTabs[0].classList.add('active');
+      if (taskTabIndicator) {
+        var firstTabRect = taskTabs[0].getBoundingClientRect();
+        var firstTabsRect = taskTabs[0].parentElement.getBoundingClientRect();
+        var firstIndicatorLeft = firstTabRect.left - firstTabsRect.left + firstTabRect.width / 2 - 18;
+        taskTabIndicator.style.left = firstIndicatorLeft + 'px';
+      }
+      taskPanels.forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-ongoing').classList.add('active');
+    }
+    orderModal.classList.remove('active');
+  });
+
+  // 首页任务接单 -> 跳转到市场页
+  document.getElementById('homeAcceptBtn').addEventListener('click', () => {
+    navItems.forEach(nav => nav.classList.remove('active'));
+    var marketNav = document.querySelector('.nav-item[data-page="market"]');
+    if (marketNav) marketNav.classList.add('active');
+    pageContents.forEach(page => page.classList.remove('active'));
+    document.getElementById('page-market').classList.add('active');
+  });
+
+  // 首页任务发布 -> 打开发布弹层
+  const publishModal = document.getElementById('publishModal');
+  document.getElementById('homePublishBtn').addEventListener('click', () => {
+    publishModal.classList.add('active');
+  });
+
+  // 关闭发布弹层
+  document.getElementById('publishCloseBtn').addEventListener('click', () => {
+    publishModal.classList.remove('active');
+  });
+
+  // 任务订单详情弹窗
+  const taskDetailModal = document.getElementById('taskDetailModal');
+
+  function openTaskDetail(type, cardEl) {
+    var nameEl = cardEl.querySelector('.task-name');
+    var amountEl = cardEl.querySelector('.task-amount');
+    var timeEl = cardEl.querySelector('.task-time');
+    var descEl = cardEl.querySelector('.task-desc');
+    var orderNoEl = cardEl.querySelector('.task-order-no');
+    var statusEl = cardEl.querySelector('.task-status');
+
+    var name = nameEl ? nameEl.textContent : '';
+    var amount = amountEl ? amountEl.textContent : '';
+    var time = timeEl ? timeEl.textContent : '';
+    var desc = descEl ? descEl.textContent : '';
+    var orderNo = orderNoEl ? orderNoEl.textContent.replace('订单号：', '') : '';
+    var statusText = statusEl ? statusEl.textContent.trim() : '';
+
+    // 填充详情视图内容
+    document.getElementById('detailClientName').textContent = name;
+    document.getElementById('detailAmount').textContent = amount;
+    document.getElementById('detailOrderTime').textContent = time;
+    document.getElementById('detailDesc').textContent = desc;
+    document.getElementById('detailOrderNo').textContent = orderNo;
+    document.getElementById('detailStatusTag').textContent = statusText;
+
+    // 填充进度视图内容
+    document.getElementById('progressOrderNo').textContent = '订单号：' + orderNo;
+    document.getElementById('progressPublisher').textContent = name;
+    document.getElementById('progressAmount').textContent = amount;
+    document.getElementById('progressDesc').textContent = desc;
+
+    // 填充已结算视图内容
+    document.getElementById('settledPublisher').textContent = name;
+    document.getElementById('settledPublishTime').textContent = time;
+    document.getElementById('settledAmount').textContent = amount;
+
+    // 填充处理中视图内容
+    document.getElementById('disputePublisher').textContent = name;
+    document.getElementById('disputeTime').textContent = time;
+    document.getElementById('disputeAmount').textContent = amount;
+
+    var modal = document.getElementById('taskDetailModal');
+    modal.classList.remove('purple', 'green', 'red');
+
+    // 默认显示详情视图
+    document.getElementById('detailViewInfo').style.display = 'block';
+    document.getElementById('detailViewProgress').style.display = 'none';
+    document.getElementById('detailViewSettled').style.display = 'none';
+    document.getElementById('detailViewDispute').style.display = 'none';
+
+    if (type === 'ongoing') {
+      modal.classList.add('purple');
+      document.getElementById('detailTitle').textContent = '进行中的订单';
+      document.getElementById('detailSub').textContent = '订单详情与进度跟踪';
+      document.getElementById('detailStatusTitle').textContent = '接单预计排队中';
+      document.getElementById('detailStatusDesc').textContent = '请耐心等待，正在为您安排';
+      document.getElementById('detailStatusSvg').innerHTML =
+        '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>';
+      document.getElementById('detailSecondaryBtn').textContent = '取消订单';
+      document.getElementById('detailPrimaryBtn').textContent = '查看进度';
+    } else if (type === 'settled') {
+      modal.classList.add('green');
+      document.getElementById('detailTitle').textContent = '已结算的订单';
+      document.getElementById('detailSub').textContent = '订单已完成，款项已到账';
+      document.getElementById('detailStatusTitle').textContent = '✓ 订单已完成结算';
+      document.getElementById('detailStatusDesc').textContent = '派币已存入您的账户';
+      document.getElementById('detailStatusSvg').innerHTML =
+        '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>';
+      document.getElementById('detailSecondaryBtn').textContent = '返回';
+      document.getElementById('detailPrimaryBtn').textContent = '查看详情';
+    } else if (type === 'processing') {
+      modal.classList.add('red');
+      document.getElementById('detailTitle').textContent = '处理中的订单';
+      document.getElementById('detailSub').textContent = '订单有争议，客服处理中';
+      document.getElementById('detailStatusTitle').textContent = '异常处理中';
+      document.getElementById('detailStatusDesc').textContent = '客服介入，双方有争议';
+      document.getElementById('detailStatusSvg').innerHTML =
+        '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>';
+      document.getElementById('detailSecondaryBtn').textContent = '返回';
+      document.getElementById('detailPrimaryBtn').textContent = '查看详情';
+    }
+
+    taskDetailModal.classList.add('active');
+  }
+
+  // 主按钮点击 - 根据当前状态切换视图
+  document.getElementById('detailPrimaryBtn').addEventListener('click', () => {
+    var modal = document.getElementById('taskDetailModal');
+    var infoView = document.getElementById('detailViewInfo');
+    var progressView = document.getElementById('detailViewProgress');
+    var settledView = document.getElementById('detailViewSettled');
+    var disputeView = document.getElementById('detailViewDispute');
+    var primaryBtn = document.getElementById('detailPrimaryBtn');
+    var secondaryBtn = document.getElementById('detailSecondaryBtn');
+
+    if (modal.classList.contains('purple')) {
+      // 进行中：切换到进度视图
+      if (infoView.style.display !== 'none') {
+        infoView.style.display = 'none';
+        progressView.style.display = 'block';
+        primaryBtn.textContent = '取消查看';
+        secondaryBtn.textContent = '返回详情';
+      } else {
+        // 已在进度视图，取消查看 -> 返回详情
+        infoView.style.display = 'block';
+        progressView.style.display = 'none';
+        primaryBtn.textContent = '查看进度';
+        secondaryBtn.textContent = '取消订单';
+      }
+    } else if (modal.classList.contains('green')) {
+      // 已结算：切换到结算详情视图
+      if (infoView.style.display !== 'none') {
+        infoView.style.display = 'none';
+        settledView.style.display = 'block';
+        primaryBtn.textContent = '取消查看';
+        secondaryBtn.textContent = '返回详情';
+      } else {
+        infoView.style.display = 'block';
+        settledView.style.display = 'none';
+        primaryBtn.textContent = '查看详情';
+        secondaryBtn.textContent = '返回';
+      }
+    } else if (modal.classList.contains('red')) {
+      // 处理中：切换到异常详情视图
+      if (infoView.style.display !== 'none') {
+        infoView.style.display = 'none';
+        disputeView.style.display = 'block';
+        primaryBtn.textContent = '取消查看';
+        secondaryBtn.textContent = '返回详情';
+      } else {
+        infoView.style.display = 'block';
+        disputeView.style.display = 'none';
+        primaryBtn.textContent = '查看详情';
+        secondaryBtn.textContent = '返回';
+      }
+    }
+  });
+
+  // 副按钮点击
+  document.getElementById('detailSecondaryBtn').addEventListener('click', () => {
+    var modal = document.getElementById('taskDetailModal');
+    var infoView = document.getElementById('detailViewInfo');
+    var progressView = document.getElementById('detailViewProgress');
+    var settledView = document.getElementById('detailViewSettled');
+    var disputeView = document.getElementById('detailViewDispute');
+    var primaryBtn = document.getElementById('detailPrimaryBtn');
+    var secondaryBtn = document.getElementById('detailSecondaryBtn');
+
+    // 如果在子视图，返回详情视图
+    if (infoView.style.display === 'none') {
+      infoView.style.display = 'block';
+      progressView.style.display = 'none';
+      settledView.style.display = 'none';
+      disputeView.style.display = 'none';
+
+      if (modal.classList.contains('purple')) {
+        primaryBtn.textContent = '查看进度';
+        secondaryBtn.textContent = '取消订单';
+      } else if (modal.classList.contains('green')) {
+        primaryBtn.textContent = '查看详情';
+        secondaryBtn.textContent = '返回';
+      } else if (modal.classList.contains('red')) {
+        primaryBtn.textContent = '查看详情';
+        secondaryBtn.textContent = '返回';
+      }
+    } else {
+      // 在详情视图，关闭弹窗
+      taskDetailModal.classList.remove('active');
+    }
+  });
+
+  // 进行中卡片点击
+  function bindTaskCards() {
+    document.querySelectorAll('#tab-ongoing .task-card').forEach(card => {
+      card.onclick = function() { openTaskDetail('ongoing', card); };
+    });
+    document.querySelectorAll('#tab-settled .task-card').forEach(card => {
+      card.onclick = function() { openTaskDetail('settled', card); };
+    });
+    document.querySelectorAll('#tab-processing .task-card').forEach(card => {
+      card.onclick = function() { openTaskDetail('processing', card); };
+    });
+  }
+  bindTaskCards();
+
+  // 关闭订单详情
+  document.getElementById('detailCloseBtn').addEventListener('click', () => {
+    taskDetailModal.classList.remove('active');
+  });
+
+  taskDetailModal.addEventListener('click', (e) => {
+    if (e.target === taskDetailModal) {
+      taskDetailModal.classList.remove('active');
+    }
+  });
+
+  publishModal.addEventListener('click', (e) => {
+    if (e.target === publishModal) {
+      publishModal.classList.remove('active');
+    }
+  });
+
+  // 取消发布
+  document.getElementById('publishCancelBtn').addEventListener('click', () => {
+    publishModal.classList.remove('active');
+  });
+
+  // 币种选择切换
+  var currentCurrency = 'PI';
+  document.querySelectorAll('.currency-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('.currency-option').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+      currentCurrency = opt.getAttribute('data-currency');
+    });
+  });
+
+  // 确认发布 -> 添加到市场列表
+  document.getElementById('publishConfirmBtn').addEventListener('click', () => {
+    var name = document.getElementById('publishName').value.trim() || '匿名派友';
+    var service = document.getElementById('publishService').value.trim() || '未填写服务内容';
+    var time = document.getElementById('publishTime').value;
+    var amount = document.getElementById('publishAmount').value.trim() || '0';
+    var remark = document.getElementById('publishRemark').value.trim();
+
+    var descText = service + (remark ? ' · ' + remark : '');
+
+    // 格式化时间：2026-10-09T14:00 -> 2026.10.09 14:00
+    var displayTime = time;
+    if (time && time.indexOf('T') > -1) {
+      var parts = time.split('T');
+      displayTime = parts[0].replace(/-/g, '.') + ' ' + parts[1];
+    }
+
+    var marketGrid = document.querySelector('.market-grid');
+    var newCard = document.createElement('div');
+    newCard.className = 'market-card accept';
+    newCard.innerHTML =
+      '<div class="card-left">接单</div>' +
+      '<div class="card-right">' +
+        '<div class="card-top">' +
+          '<span class="card-time">' + displayTime + '</span>' +
+        '</div>' +
+        '<div class="card-middle">' +
+          '<span class="card-name">' + name + '</span>' +
+          '<span class="card-reward">' + amount + ' ' + currentCurrency + '</span>' +
+        '</div>' +
+        '<div class="card-bottom">' + descText + '</div>' +
+      '</div>';
+
+    // 绑定点击事件
+    newCard.addEventListener('click', function() {
+      var timeEl2 = newCard.querySelector('.card-time');
+      var nameEl2 = newCard.querySelector('.card-name');
+      var amountEl2 = newCard.querySelector('.card-reward');
+      var descEl2 = newCard.querySelector('.card-bottom');
+
+      currentOrderData = {
+        time: timeEl2 ? timeEl2.textContent : '',
+        name: nameEl2 ? nameEl2.textContent : '',
+        amount: amountEl2 ? amountEl2.textContent : '',
+        desc: descEl2 ? descEl2.textContent : ''
+      };
+      currentOrderCard = newCard;
+
+      document.getElementById('orderTime').textContent = currentOrderData.time;
+      document.getElementById('orderName').textContent = currentOrderData.name;
+      document.getElementById('orderAmount').textContent = currentOrderData.amount;
+      document.getElementById('orderDesc').textContent = currentOrderData.desc;
+
+      orderModal.classList.add('active');
+    });
+
+    marketGrid.insertBefore(newCard, marketGrid.firstChild);
+
+    // 清空表单
+    document.getElementById('publishName').value = '';
+    document.getElementById('publishService').value = '';
+    document.getElementById('publishAmount').value = '';
+    document.getElementById('publishRemark').value = '';
+
+    // 跳转到市场页
+    navItems.forEach(nav => nav.classList.remove('active'));
+    var marketNav2 = document.querySelector('.nav-item[data-page="market"]');
+    if (marketNav2) marketNav2.classList.add('active');
+    pageContents.forEach(page => page.classList.remove('active'));
+    document.getElementById('page-market').classList.add('active');
+
+    publishModal.classList.remove('active');
+  });
+
+  // 弹层控制
+  const aboutModal = document.getElementById('aboutModal');
+  const settingsModal = document.getElementById('settingsModal');
+
+  // 打开弹层
+  document.querySelectorAll('[data-open]').forEach(item => {
+    item.addEventListener('click', () => {
+      const target = item.getAttribute('data-open');
+      if (target === 'about') {
+        aboutModal.classList.add('active');
+      } else if (target === 'settings') {
+        settingsModal.classList.add('active');
+      }
+    });
+  });
+
+  // 关闭弹层
+  document.querySelectorAll('[data-close]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.getAttribute('data-close');
+      if (target === 'about') {
+        aboutModal.classList.remove('active');
+      } else if (target === 'settings') {
+        settingsModal.classList.remove('active');
+      }
+    });
+  });
+
+  // 点击遮罩关闭
+  [aboutModal, settingsModal].forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('active');
+      }
+    });
+  });
+
+  // 游戏大小切换
+  const sizeToggle = document.getElementById('sizeToggle');
+  const sizeSelector = document.getElementById('sizeSelector');
+  const sizeValue = document.getElementById('sizeValue');
+  const sizeOptions = document.querySelectorAll('.size-option');
+
+  sizeToggle.addEventListener('click', () => {
+    sizeSelector.classList.toggle('show');
+  });
+
+  sizeOptions.forEach(option => {
+    option.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const size = option.getAttribute('data-size');
+      sizeValue.textContent = size;
+      sizeOptions.forEach(opt => opt.classList.remove('active'));
+      option.classList.add('active');
+      sizeSelector.classList.remove('show');
+    });
+  });
+
+  // ========== 派币分红弹窗 ==========
+  const dividendModal = document.getElementById('dividendModal');
+
+  document.querySelector('.menu-item[data-open="dividend"]').addEventListener('click', () => {
+    dividendModal.classList.add('active');
+  });
+
+  document.querySelectorAll('[data-close-dividend]').forEach(el => {
+    el.addEventListener('click', () => {
+      dividendModal.classList.remove('active');
+    });
+  });
+
+  dividendModal.addEventListener('click', (e) => {
+    if (e.target === dividendModal) dividendModal.classList.remove('active');
+  });
+
+  // ========== 游戏说明弹窗 ==========
+  const guideModal = document.getElementById('guideModal');
+
+  document.querySelector('.menu-item[data-open="guide"]').addEventListener('click', () => {
+    guideModal.classList.add('active');
+  });
+
+  document.querySelectorAll('[data-close-guide]').forEach(el => {
+    el.addEventListener('click', () => {
+      guideModal.classList.remove('active');
+    });
+  });
+
+  guideModal.addEventListener('click', (e) => {
+    if (e.target === guideModal) guideModal.classList.remove('active');
+  });
+
+  // ========== 充值弹窗 ==========
+  const rechargeModal = document.getElementById('rechargeModal');
+
+  document.querySelector('.btn-recharge').addEventListener('click', () => {
+    rechargeModal.classList.add('active');
+  });
+
+  document.querySelectorAll('[data-close-recharge]').forEach(el => {
+    el.addEventListener('click', () => {
+      rechargeModal.classList.remove('active');
+    });
+  });
+
+  rechargeModal.addEventListener('click', (e) => {
+    if (e.target === rechargeModal) rechargeModal.classList.remove('active');
+  });
+
+  // 复制地址
+  document.getElementById('rechargeCopyBtn').addEventListener('click', () => {
+    var addr = document.getElementById('rechargeAddress').textContent;
+    var input = document.createElement('textarea');
+    input.value = addr;
+    document.body.appendChild(input);
+    input.select();
+    try { document.execCommand('copy'); } catch(e) {}
+    document.body.removeChild(input);
+    var btn = document.getElementById('rechargeCopyBtn');
+    btn.textContent = '已复制';
+    setTimeout(() => { btn.textContent = '复制'; }, 1500);
+  });
+
+  // 我已充值
+  document.getElementById('rechargeConfirmBtn').addEventListener('click', () => {
+    var amount = document.getElementById('rechargeAmount').value;
+    if (!amount || parseFloat(amount) <= 0) {
+      alert('请输入充值数量');
+      return;
+    }
+    alert('已提交充值申请，到账后会自动更新余额');
+    rechargeModal.classList.remove('active');
+    document.getElementById('rechargeAmount').value = '';
+  });
+
+  // ========== 提现弹窗 ==========
+  const withdrawModal = document.getElementById('withdrawModal');
+
+  document.querySelector('.btn-withdraw').addEventListener('click', () => {
+    withdrawModal.classList.add('active');
+  });
+
+  document.querySelectorAll('[data-close-withdraw]').forEach(el => {
+    el.addEventListener('click', () => {
+      withdrawModal.classList.remove('active');
+    });
+  });
+
+  withdrawModal.addEventListener('click', (e) => {
+    if (e.target === withdrawModal) withdrawModal.classList.remove('active');
+  });
+
+  document.getElementById('withdrawConfirmBtn').addEventListener('click', () => {
+    var addr = document.getElementById('withdrawAddress').value;
+    var amount = document.getElementById('withdrawAmount').value;
+    if (!addr) { alert('请输入提现地址'); return; }
+    if (!amount || parseFloat(amount) <= 0) { alert('请输入提现数量'); return; }
+    if (parseFloat(amount) > 1) { alert('余额不足'); return; }
+    alert('提现申请已提交，将在24小时内到账');
+    withdrawModal.classList.remove('active');
+    document.getElementById('withdrawAddress').value = '';
+    document.getElementById('withdrawAmount').value = '';
+  });
+
+  // ========== 划转弹窗 ==========
+  const transferModal = document.getElementById('transferModal');
+  const transferConfirmModal = document.getElementById('transferConfirmModal');
+
+  document.querySelector('.btn-transfer').addEventListener('click', () => {
+    transferModal.classList.add('active');
+  });
+
+  document.querySelectorAll('[data-close-transfer]').forEach(el => {
+    el.addEventListener('click', () => {
+      transferModal.classList.remove('active');
+    });
+  });
+
+  transferModal.addEventListener('click', (e) => {
+    if (e.target === transferModal) transferModal.classList.remove('active');
+  });
+
+  // 确认划转 - 弹出二次确认
+  document.getElementById('transferConfirmBtn').addEventListener('click', () => {
+    var addr = document.getElementById('transferAddress').value;
+    var amount = document.getElementById('transferAmount').value;
+    if (!addr) { alert('请输入对方钱包地址'); return; }
+    if (!amount || parseFloat(amount) <= 0) { alert('请输入划转数量'); return; }
+    if (parseFloat(amount) > 1) { alert('余额不足'); return; }
+
+    document.getElementById('tcAmount').textContent = parseFloat(amount).toFixed(2) + ' PI';
+    document.getElementById('tcAddress').textContent = addr;
+    transferConfirmModal.classList.add('active');
+  });
+
+  // 二次确认 - 取消
+  document.getElementById('tcCancelBtn').addEventListener('click', () => {
+    transferConfirmModal.classList.remove('active');
+  });
+
+  // 二次确认 - 确认
+  document.getElementById('tcOkBtn').addEventListener('click', () => {
+    alert('划转成功，派币已转入对方账户');
+    transferConfirmModal.classList.remove('active');
+    transferModal.classList.remove('active');
+    document.getElementById('transferAddress').value = '';
+    document.getElementById('transferAmount').value = '';
+  });
+
+  transferConfirmModal.addEventListener('click', (e) => {
+    if (e.target === transferConfirmModal) transferConfirmModal.classList.remove('active');
+  });
+
+  // ========== 生态设置弹窗 ==========
+  const ecoSettingsModal = document.getElementById('ecoSettingsModal');
+
+  document.getElementById('profileSettingBtn').addEventListener('click', () => {
+    ecoSettingsModal.classList.add('active');
+  });
+
+  document.getElementById('ecoSettingsCloseBtn').addEventListener('click', () => {
+    ecoSettingsModal.classList.remove('active');
+  });
+
+  ecoSettingsModal.addEventListener('click', (e) => {
+    if (e.target === ecoSettingsModal) ecoSettingsModal.classList.remove('active');
+  });
+
+  // 背景色切换
+  document.querySelectorAll('.eco-color-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      document.querySelectorAll('.eco-color-dot').forEach(d => d.classList.remove('active'));
+      dot.classList.add('active');
+
+      var bg = dot.getAttribute('data-bg');
+      document.body.classList.remove('bg-green', 'bg-red', 'bg-yellow', 'bg-white', 'bg-black');
+      if (bg !== 'default') {
+        document.body.classList.add('bg-' + bg);
+      }
+    });
+  });
+
+  // 字体大小切换
+  document.querySelectorAll('.eco-font-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.eco-font-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      var font = btn.getAttribute('data-font');
+      document.body.classList.remove('font-xs', 'font-sm', 'font-md', 'font-lg');
+      document.body.classList.add('font-' + font);
+    });
+  });
+
+</script>
+
+</body>
+</html>
